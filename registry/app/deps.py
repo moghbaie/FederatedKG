@@ -8,6 +8,9 @@ from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from fkg_protocol.tokens import AuthError
+from fkg_protocol.users import verify_user_token
+
 from .audit import record
 from .clock import Clock
 from .config import Settings
@@ -37,6 +40,7 @@ def get_db(request: Request) -> Iterator[Session]:
 
 
 def current_researcher(
+    request: Request,
     creds: HTTPAuthorizationCredentials | None = Depends(_bearer),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
@@ -44,17 +48,27 @@ def current_researcher(
 ) -> Researcher:
     if creds is None:
         raise problem(401, "unauthenticated", "missing bearer token")
-    try:
-        # Expiry is checked against the registry clock (not the library's wall clock) so that
-        # test-clock advances expire tokens consistently with channels.
-        claims = jwt.decode(creds.credentials, settings.token_secret, algorithms=["HS256"],
-                            audience=TOKEN_AUDIENCE, issuer=TOKEN_ISSUER,
-                            options={"verify_exp": False, "verify_iat": False,
-                                     "require": ["sub", "exp", "iat", "jti"]})
-    except jwt.PyJWTError:
-        raise problem(401, "invalid_token", "token is invalid") from None
-    if clock.now().timestamp() >= claims["exp"]:
-        raise problem(401, "token_expired", "token has expired")
+    # Expiry is checked against the registry clock (not the library's wall clock) so that
+    # test-clock advances expire tokens consistently with channels.
+    identity = request.app.state.identity
+    if identity.available:
+        # Exactly one algorithm is accepted per deployment, so tokens cannot be downgraded to HS256.
+        try:
+            claims = verify_user_token(creds.credentials, identity.keyring.get("registry"),
+                                       clock.now().timestamp())
+        except AuthError as e:
+            code = "token_expired" if e.code == "user_token_expired" else "invalid_token"
+            raise problem(401, code, "token is invalid or expired") from None
+    else:
+        try:
+            claims = jwt.decode(creds.credentials, settings.token_secret, algorithms=["HS256"],
+                                audience=TOKEN_AUDIENCE, issuer=TOKEN_ISSUER,
+                                options={"verify_exp": False, "verify_iat": False,
+                                         "require": ["sub", "exp", "iat", "jti"]})
+        except jwt.PyJWTError:
+            raise problem(401, "invalid_token", "token is invalid") from None
+        if clock.now().timestamp() >= claims["exp"]:
+            raise problem(401, "token_expired", "token has expired")
     researcher = db.get(Researcher, claims["sub"])
     if researcher is None:
         raise problem(401, "invalid_token", "unknown subject")

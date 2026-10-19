@@ -22,12 +22,14 @@ from fkg_protocol.keys import Keyring, load_private
 from fkg_protocol.results import shape, sign_package
 from fkg_protocol.tickets import counterpart, verify_ticket
 from fkg_protocol.tokens import AuthError, ReplayCache, sign_service_token, verify_service_token, wall_now
+from fkg_protocol.users import verify_user_token
 from similarity.scoped_baseline import plaintext_overlap
 
 from .capture import Capture, CaptureMiddleware
 from .config import AgentSettings
 from .graph import eligible_sets, graph_metadata, load_private_graph
 from .local_policy import AgentState, LocalPolicy
+from .owner_view import owner_graph
 
 TOKEN_HEADER = "X-Service-Token"
 PERSONAS = ("persona_a", "persona_b", "persona_c", "persona_d")
@@ -343,6 +345,24 @@ def set_clock(body: ClockBody, auth: dict = Depends(authenticated(("registry",),
         raise fail(404, "not_found")
     rt.clock_offset = body.offset_seconds
     return {"offset_seconds": rt.clock_offset}
+
+
+# ---- owner-only view ("My KG") -----------------------------------------------------------------------
+
+@app.get("/owner/graph")
+def my_graph(request: Request) -> dict:
+    """The owner's own graph, for the owner's browser only (registry-signed user token, sub == this agent)."""
+    auth = request.headers.get("Authorization", "")
+    registry_key = rt.keyring.get("registry")
+    if not auth.startswith("Bearer ") or registry_key is None:
+        raise fail(401, "unauthenticated")
+    try:
+        claims = verify_user_token(auth.removeprefix("Bearer "), registry_key, now())
+    except AuthError as e:
+        raise fail(401, e.code) from None
+    if claims["sub"] != AGENT_ID:
+        raise fail(403, "not_the_owner")
+    return owner_graph(rt.graph, AGENT_ID)
 
 
 @app.get("/internal/health")

@@ -6,6 +6,7 @@
 #   data   registry <-> postgres (internal)
 #   agents registry <-> agents   (internal; tickets, ticket status, service-authenticated)
 #   peer   agent <-> agent       (internal; PSI-CA messages; registry is NOT attached)
+#   owner  frontend proxy -> agents, only for each owner's own /owner/graph ("My KG")
 #
 # Keys: `keygen` runs once and writes each service's Ed25519 private key only into that
 # service's own volume; every service mounts its own key volume plus the public keyring.
@@ -13,7 +14,7 @@
 x-agent: &agent
   image: federatedkg-agent:dev
   pull_policy: never
-  networks: [agents, peer]
+  networks: [agents, peer, owner]
   depends_on:
     keygen: { condition: service_completed_successfully }
   healthcheck:
@@ -157,9 +158,13 @@ services:
     image: federatedkg-frontend:dev
     ports:
       - "${FRONTEND_PORT:-8080}:80"
-    networks: [edge]
+    networks: [edge, owner]
     depends_on:
       registry: { condition: service_healthy }
+      agent_a: { condition: service_healthy }
+      agent_b: { condition: service_healthy }
+      agent_c: { condition: service_healthy }
+      agent_d: { condition: service_healthy }
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
       interval: 5s
@@ -171,6 +176,7 @@ networks:
   data: { internal: true }
   agents: { internal: true }
   peer: { internal: true }
+  owner: { internal: true }
 
 volumes:
   registry_db: {}

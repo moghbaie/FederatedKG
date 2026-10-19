@@ -33,11 +33,18 @@ def create_app(settings: Settings | None = None, clock: Clock | None = None) -> 
         yield
         engine.dispose()
 
-    app = FastAPI(title="FederatedKG registry", version="0.2.0", lifespan=lifespan)
+    app = FastAPI(title="FederatedKG registry", version="0.5.0", lifespan=lifespan)
     app.state.settings = settings
     app.state.clock = clock or Clock(adjustable=settings.test_mode)
     app.state.engine = engine
     app.state.sessionmaker = Session
+
+    @app.middleware("http")
+    async def registry_time(request, call_next):
+        # Lets the UI show countdowns on the registry clock (which may be advanced in test mode).
+        response = await call_next(request)
+        response.headers["X-Registry-Now"] = app.state.clock.now().isoformat()
+        return response
 
     def db_ok() -> bool:
         try:

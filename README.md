@@ -1,4 +1,4 @@
-# FederatedKG (MVP, Phase 4)
+# FederatedKG (MVP, Phase 5)
 
 > **Simulated researchers and synthetic knowledge graphs. No real researcher participation.**
 > Personas A–D cite published work by real scientists *only* as public research-theme inspiration.
@@ -16,7 +16,8 @@ cardinality) without exchanging plaintext entity lists. See [plan.md](plan.md) f
 | 2 | Demo identities (A–E), verified membership, channels, 24-hour expiry, topic discovery | done |
 | 3 | Comparison requests, manual approvals, versioned policy enforcement, quotas, audit | done |
 | 4 | Signed tickets, service authentication, agent-to-agent PSI-CA, guarded release, leak scan | done |
-| 5 | Web UI for all eight screens | next |
+| 5 | Web UI: eight screens, owner-only My KG, local contradiction check | done |
+| 6 | Automated four-researcher browser scenario (pause, tightening, 24 h expiry) | next |
 
 ## Registry API
 
@@ -77,6 +78,28 @@ What enforcement looks like:
 
 Turn test mode off anywhere other than a local demo.
 
+## Web app
+
+Open http://localhost:8080 and pick a simulated account. Each browser tab keeps its own session, so you can play all
+four researchers side by side. A banner on every page says the researchers and data are simulated.
+
+| Screen | What it does |
+|---|---|
+| Sign-in | Five labelled demo accounts, system health, and **Reset demo** (test mode only) |
+| My KG | Your own graph, served by **your agent** through `/agent/<you>/owner/graph`. The registry never sees it. Public topics are green diamonds; everything else is private. Also lists synthetic hypotheses, observations and the local contradiction check. |
+| Directory | Verified researchers ranked by published-topic match, with a one-to-one request form |
+| Discover | Open channels (topics only) with topic-match scores and countdowns, plus a request form limited by the owner's policy |
+| My channels | Create, activate (24 h), pause, resume and close channels; edit the policy as a new version; view version history |
+| Requests | Inbox (approve or reject) and Sent (run an approved comparison, or cancel) |
+| Matches | Signed PSI-CA results as bands, a protocol badge, what each side learned, provenance, a manual in-app contact request, and evidence sharing shown as disabled |
+| Audit | Your timeline of policy versions, decisions, runs, releases, withholdings and denials |
+
+The **demo clock** buttons (+1 h, +24 h, test mode only) advance the registry and agent clocks together, so you can
+watch expiry happen.
+
+Only the owner's own session can open My KG: the agent requires a registry-signed (Ed25519) user token whose subject
+is its persona. Other sessions get 403, and the proxy exposes no other agent path.
+
 ## How a comparison runs (Phase 4)
 
 ```text
@@ -115,7 +138,9 @@ docker compose up -d --build --wait      # registry, postgres, 4 agents, fronten
 open http://localhost:8080               # health page and simulated accounts
 uv sync
 uv run pytest                            # unit and static security tests (no stack needed)
-uv run pytest -m live                    # live isolation, health and PSI-CA smoke tests
+uv run pytest -m live                    # live API, isolation, PSI-CA and leak-scan tests
+cd frontend && npx playwright install chromium && npx playwright test   # browser end-to-end tests
+FKG_SCREENSHOTS=1 npx playwright test    # optional: capture screenshots of every screen
 docker compose down -v                   # stop and wipe volumes
 ```
 

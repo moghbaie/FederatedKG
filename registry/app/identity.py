@@ -10,11 +10,12 @@ import uuid
 from datetime import timedelta
 
 import jwt
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from fkg_protocol.users import sign_user_token
 from similarity.public_topics import topic_similarity
 
 from .audit import record
@@ -55,16 +56,22 @@ class DemoLogin(BaseModel):
 
 
 @router.post("/auth/demo-login")
-def demo_login(body: DemoLogin, db: Session = Depends(get_db), settings: Settings = Depends(get_settings),
-               clock: Clock = Depends(get_clock)) -> dict:
+def demo_login(body: DemoLogin, request: Request, db: Session = Depends(get_db),
+               settings: Settings = Depends(get_settings), clock: Clock = Depends(get_clock)) -> dict:
     researcher = db.get(Researcher, body.researcher_id)
     if researcher is None:
         raise problem(401, "unknown_account", "no such demo account")
     now = clock.now()
     expires = now + timedelta(seconds=settings.token_ttl_seconds)
-    token = jwt.encode({"sub": researcher.id, "iss": TOKEN_ISSUER, "aud": TOKEN_AUDIENCE,
-                        "iat": int(now.timestamp()), "exp": int(expires.timestamp()),
-                        "jti": str(uuid.uuid4())}, settings.token_secret, algorithm="HS256")
+    claims = {"sub": researcher.id, "iat": int(now.timestamp()), "exp": int(expires.timestamp()),
+              "jti": str(uuid.uuid4())}
+    identity = request.app.state.identity
+    if identity.available:
+        # EdDSA: agents can verify it (owner-only "My KG" view) with the public keyring.
+        token = sign_user_token(identity.key, claims)
+    else:
+        token = jwt.encode({**claims, "iss": TOKEN_ISSUER, "aud": TOKEN_AUDIENCE}, settings.token_secret,
+                           algorithm="HS256")
     record(db, clock, actor_id=researcher.id, action="auth.demo_login", object_type="researcher",
            object_id=researcher.id)
     db.commit()

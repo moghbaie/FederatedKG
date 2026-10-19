@@ -28,7 +28,8 @@ class CaptureMiddleware:
         self.capture = capture
 
     async def __call__(self, scope, receive, send):
-        if scope["type"] != "http" or not self.capture.path:
+        # The owner's own graph view goes only to its owner's browser; it is not inter-party traffic.
+        if scope["type"] != "http" or not self.capture.path or scope.get("path", "").startswith("/owner/"):
             return await self.app(scope, receive, send)
         path = scope.get("path", "")
 

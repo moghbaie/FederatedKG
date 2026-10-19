@@ -24,7 +24,7 @@ from .audit import record
 from .clock import Clock, as_utc
 from .config import Settings
 from .deps import get_clock, get_db, problem, verified_researcher
-from .models import Channel, ComparisonRequest, ComparisonResult, Researcher, Ticket
+from .models import Channel, ComparisonRequest, ComparisonResult, Notification, Researcher, Ticket
 from .notifications import notify
 from .policy import incompatibility
 from .requests import _party_request, _set_status, execution_check, view
@@ -49,6 +49,8 @@ def install(app: FastAPI, settings: Settings) -> None:
     app.state.identity = ServiceIdentity(settings)
     app.state.agent_transport = None  # tests inject an httpx transport that simulates agents
     app.state.test_agent_delay = 0.0
+    if app.state.identity.available and app.state.identity.keyring.get("registry") is None:
+        raise RuntimeError("registry public key missing from keyring")
     app.include_router(router)
 
 
@@ -229,6 +231,26 @@ def get_result(request_id: str, me: Researcher = Depends(verified_researcher), d
         out["matched_public_topics"] = sorted(set(req.requested_scope["topics"]) & set(requester.published_topics)
                                               & set(recipient.published_topics))
     return out
+
+
+# ---- optional, manual contact request --------------------------------------------------------------
+
+@router.post("/v1/requests/{request_id}/contact")
+def request_contact(request_id: str, me: Researcher = Depends(verified_researcher), db: Session = Depends(get_db),
+                    clock: Clock = Depends(get_clock)) -> dict:
+    """An explicit, user-initiated in-app notice to the other party. Never sent automatically or externally."""
+    req = _party_request(db, me, request_id)
+    if req.status != "COMPLETED":
+        raise problem(409, "contact_requires_completed_match", "contact can be requested only after a match")
+    other = req.recipient_id if me.id == req.requester_id else req.requester_id
+    already = db.scalars(select(Notification).where(Notification.request_id == req.id,
+                                                    Notification.recipient_id == other,
+                                                    Notification.kind == "contact_requested")).first()
+    if already is None:
+        notify(db, clock, other, "contact_requested", req.id)
+        record(db, clock, actor_id=me.id, action="contact.request", object_type="request", object_id=req.id)
+        db.commit()
+    return {"request_id": req.id, "contact_requested": True, "delivered": "in-app notification only"}
 
 
 # ---- internal: ticket status for agents ----------------------------------------------------------
