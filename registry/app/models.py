@@ -39,6 +39,8 @@ class Channel(Base):
     audience: Mapped[str] = mapped_column(String(32), default="verified_researchers")
     visibility: Mapped[str] = mapped_column(String(32), default="topics")
     approval_mode: Mapped[str] = mapped_column(String(32), default="manual")
+    max_disclosure: Mapped[str] = mapped_column(String(16), default="score_only")
+    allowed_result_visibility: Mapped[list[str]] = mapped_column(JSON)
     status: Mapped[str] = mapped_column(String(16), default="DRAFT")
     activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -60,8 +62,51 @@ class ChannelPolicyVersion(Base):
     audience: Mapped[str] = mapped_column(String(32))
     visibility: Mapped[str] = mapped_column(String(32))
     approval_mode: Mapped[str] = mapped_column(String(32))
+    max_disclosure: Mapped[str] = mapped_column(String(16))
+    allowed_result_visibility: Mapped[list[str]] = mapped_column(JSON)
     created_by: Mapped[str] = mapped_column(ForeignKey("researchers.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class ComparisonRequest(Base):
+    """A scoped request to compare graphs, via an open channel or targeted one-to-one.
+
+    PENDING -> APPROVED | REJECTED | CANCELLED | EXPIRED
+    APPROVED -> RUNNING -> COMPLETED | FAILED | CANCELLED | EXPIRED   (RUNNING onward: Phase 4)
+    """
+
+    __tablename__ = "comparison_requests"
+    __table_args__ = (UniqueConstraint("requester_id", "idempotency_key"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    channel_id: Mapped[str | None] = mapped_column(ForeignKey("channels.id"), index=True, nullable=True)
+    target_researcher_id: Mapped[str | None] = mapped_column(ForeignKey("researchers.id"), nullable=True)
+    requester_id: Mapped[str] = mapped_column(ForeignKey("researchers.id"), index=True)
+    recipient_id: Mapped[str] = mapped_column(ForeignKey("researchers.id"), index=True)
+    requested_scope: Mapped[dict] = mapped_column(JSON)
+    scope_fingerprint: Mapped[str] = mapped_column(String(64))
+    result_visibility: Mapped[str] = mapped_column(String(16))
+    status: Mapped[str] = mapped_column(String(16), default="PENDING")
+    status_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    decision_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    approved_policy_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    idempotency_key: Mapped[str] = mapped_column(String(128))
+
+
+class Notification(Base):
+    """In-app system notices about requests. Never sent outside the app, never carries graph data."""
+
+    __tablename__ = "notifications"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    recipient_id: Mapped[str] = mapped_column(ForeignKey("researchers.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(48))
+    request_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class AuditEvent(Base):

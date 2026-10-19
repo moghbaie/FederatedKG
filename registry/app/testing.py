@@ -10,7 +10,7 @@ from .clock import Clock
 from .config import Settings
 from .deps import get_clock, get_db, get_settings
 from .identity import seed_researchers
-from .models import AuditEvent, Channel, ChannelPolicyVersion
+from .models import AuditEvent, Channel, ChannelPolicyVersion, ComparisonRequest, Notification
 
 router = APIRouter(prefix="/v1/test", tags=["test-mode"])
 
@@ -34,7 +34,7 @@ def advance_clock(body: Advance, clock: Clock = Depends(get_clock)) -> dict:
 @router.post("/reset")
 def reset_demo(db: Session = Depends(get_db), clock: Clock = Depends(get_clock),
                settings: Settings = Depends(get_settings)) -> dict:
-    for model in (ChannelPolicyVersion, Channel, AuditEvent):
+    for model in (Notification, ComparisonRequest, ChannelPolicyVersion, Channel, AuditEvent):
         db.execute(delete(model))
     db.commit()
     seed_researchers(db, settings)

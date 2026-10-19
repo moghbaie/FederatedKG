@@ -83,7 +83,9 @@ def test_non_active_channels_are_not_discoverable(client, login, open_channel, s
 def test_discovery_exposes_topics_only_with_topic_match(client, login, open_channel, public_profiles):
     ch = open_channel("persona_a", topics=["proteomics", "mass_spectrometry", "quantitative_proteomics"])
     item = client.get("/v1/channels", headers=login("persona_b")).json()["channels"][0]
-    assert set(item) == {"id", "owner", "topics", "visibility", "approval_mode", "expires_at", "topic_match"}
+    # Policy limits are shown so requesters can form a valid scope; nothing graph-derived is.
+    assert set(item) == {"id", "owner", "topics", "visibility", "approval_mode", "max_disclosure",
+                         "allowed_result_visibility", "expires_at", "topic_match"}
     assert item["owner"] == {"researcher_id": "persona_a", "display_name": "Persona A"}
     b_topics = next(r["published_topics"] for r in public_profiles["researchers"] if r["researcher_id"] == "persona_b")
     inter, union = set(b_topics) & set(ch["topics"]), set(b_topics) | set(ch["topics"])

@@ -17,6 +17,13 @@ class Settings:
     token_secret: str = field(default_factory=lambda: secrets.token_urlsafe(32), repr=False)
     token_ttl_seconds: int = 30 * 60
     channel_lifetime_seconds: int = 24 * 60 * 60
+    # Targeted (one-to-one) requests and their approvals lapse after this long.
+    targeted_request_ttl_seconds: int = 72 * 60 * 60
+    # Anti-probing limits per (requester, recipient) pair over a rolling 24 hours.
+    pair_request_limit: int = 5
+    pair_distinct_scope_limit: int = 3
+    # Accept protocol="plaintext_dev" (correctness oracle only; never the privacy path).
+    dev_plaintext_matcher: bool = False
     # Enables the controllable clock and reset endpoints. Never enable outside local demo/tests.
     test_mode: bool = False
     public_profiles: Path = Path("/app/public/researchers.json")
@@ -31,6 +38,7 @@ class Settings:
         return cls(
             database_url=os.environ["DATABASE_URL"],
             test_mode=_flag("FKG_TEST_MODE"),
+            dev_plaintext_matcher=_flag("DEV_PLAINTEXT_MATCHER"),
             public_profiles=Path(os.environ.get("PUBLIC_PROFILES", "/app/public/researchers.json")),
             agent_health_urls={k.strip(): v.strip() for k, v in agents.items()},
             **kwargs,

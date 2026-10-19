@@ -16,9 +16,9 @@ PERSONAS = ["persona_a", "persona_b", "persona_c", "persona_d", "persona_e"]
 VERIFIED = PERSONAS[:4]
 
 
-def make_client(tmp_path, test_mode: bool = True) -> TestClient:
+def make_client(tmp_path, test_mode: bool = True, **overrides) -> TestClient:
     settings = Settings(database_url=f"sqlite:///{tmp_path / 'registry.db'}", test_mode=test_mode,
-                        public_profiles=DATA / "public" / "researchers.json")
+                        public_profiles=DATA / "public" / "researchers.json", **overrides)
     app = create_app(settings, Clock(adjustable=test_mode))
     Base.metadata.create_all(app.state.engine)
     return TestClient(app)

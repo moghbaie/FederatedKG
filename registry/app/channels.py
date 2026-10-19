@@ -7,6 +7,7 @@ holds even before the stored status is reconciled. Pause never extends `expires_
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from typing import Literal
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict, Field
@@ -20,22 +21,19 @@ from .clock import Clock, as_utc
 from .config import Settings
 from .deps import get_clock, get_db, get_settings, problem, verified_researcher
 from .models import Channel, ChannelPolicyVersion, Researcher
+from .policy import RESULT_VISIBILITY
+from .requests import cancel_open_requests, reconcile_requests, revalidate_open_requests
+from .status import LIVE_CHANNEL as LIVE
+from .status import channel_status as effective_status
 
 router = APIRouter(prefix="/v1/channels")
 
-LIVE = ("ACTIVE", "PAUSED")
 TRANSITIONS = {
     "activate": ({"DRAFT"}, "ACTIVE"),
     "pause": ({"ACTIVE"}, "PAUSED"),
     "resume": ({"PAUSED"}, "ACTIVE"),
     "close": ({"ACTIVE", "PAUSED"}, "CLOSED"),
 }
-
-
-def effective_status(ch: Channel, now: datetime) -> str:
-    if ch.status in LIVE and ch.expires_at is not None and now >= as_utc(ch.expires_at):
-        return "EXPIRED"
-    return ch.status
 
 
 def reconcile_expired(db: Session, clock: Clock) -> None:
@@ -47,11 +45,13 @@ def reconcile_expired(db: Session, clock: Clock) -> None:
             record(db, clock, actor_id=None, action="channel.expire", object_type="channel", object_id=ch.id,
                    policy_version=ch.policy_version, reason_code="lifetime_elapsed")
     db.commit()
+    reconcile_requests(db, clock)
 
 
 def owner_view(ch: Channel, now: datetime) -> dict:
     return {"id": ch.id, "owner_id": ch.owner_id, "topics": ch.topics, "audience": ch.audience,
             "visibility": ch.visibility, "approval_mode": ch.approval_mode,
+            "max_disclosure": ch.max_disclosure, "allowed_result_visibility": ch.allowed_result_visibility,
             "status": effective_status(ch, now), "activated_at": _iso(ch.activated_at),
             "expires_at": _iso(ch.expires_at), "policy_version": ch.policy_version,
             "created_at": _iso(ch.created_at)}
@@ -61,6 +61,7 @@ def discovery_view(ch: Channel, owner: Researcher, viewer: Researcher) -> dict:
     """What a verified non-owner may see: published topics only, never graph content."""
     return {"id": ch.id, "owner": {"researcher_id": owner.id, "display_name": owner.display_name},
             "topics": ch.topics, "visibility": ch.visibility, "approval_mode": ch.approval_mode,
+            "max_disclosure": ch.max_disclosure, "allowed_result_visibility": ch.allowed_result_visibility,
             "expires_at": _iso(ch.expires_at),
             "topic_match": topic_similarity(set(viewer.published_topics), set(ch.topics))}
 
@@ -97,27 +98,39 @@ def _validate_topics(me: Researcher, topics: list[str]) -> list[str]:
 
 def _snapshot(db: Session, ch: Channel, actor: Researcher, now: datetime) -> None:
     db.add(ChannelPolicyVersion(channel_id=ch.id, version=ch.policy_version, topics=ch.topics,
-                                audience=ch.audience, visibility=ch.visibility,
-                                approval_mode=ch.approval_mode, created_by=actor.id, created_at=now))
+                                audience=ch.audience, visibility=ch.visibility, approval_mode=ch.approval_mode,
+                                max_disclosure=ch.max_disclosure,
+                                allowed_result_visibility=ch.allowed_result_visibility,
+                                created_by=actor.id, created_at=now))
+
+
+Disclosure = Literal["score_only", "summary"]  # "evidence" cannot be offered in v1
+Visibility = Literal["requester_only", "both"]
 
 
 class ChannelCreate(BaseModel):
     # extra="forbid": a client-supplied owner_id (or anything else) is rejected, never trusted.
     model_config = ConfigDict(extra="forbid")
     topics: list[str] = Field(min_length=1)
+    max_disclosure: Disclosure = "score_only"
+    allowed_result_visibility: list[Visibility] = Field(default=list(RESULT_VISIBILITY), min_length=1)
 
 
 class ChannelPatch(BaseModel):
+    """Any subset of policy fields; every accepted change creates a new immutable version."""
     model_config = ConfigDict(extra="forbid")
-    topics: list[str] = Field(min_length=1)
     expected_policy_version: int
+    topics: list[str] | None = Field(default=None, min_length=1)
+    max_disclosure: Disclosure | None = None
+    allowed_result_visibility: list[Visibility] | None = Field(default=None, min_length=1)
 
 
 @router.post("", status_code=201)
 def create_channel(body: ChannelCreate, me: Researcher = Depends(verified_researcher),
                    db: Session = Depends(get_db), clock: Clock = Depends(get_clock)) -> dict:
     now = clock.now()
-    ch = Channel(owner_id=me.id, topics=_validate_topics(me, body.topics), status="DRAFT",
+    ch = Channel(owner_id=me.id, topics=_validate_topics(me, body.topics), max_disclosure=body.max_disclosure,
+                 allowed_result_visibility=sorted(set(body.allowed_result_visibility)), status="DRAFT",
                  policy_version=1, created_at=now, updated_at=now)
     db.add(ch)
     db.flush()
@@ -176,12 +189,19 @@ def update_channel(channel_id: str, body: ChannelPatch, me: Researcher = Depends
     if body.expected_policy_version != ch.policy_version:
         raise _deny(db, clock, me, "channel.update", ch.id, 409, "stale_policy_version",
                     f"channel is at policy version {ch.policy_version}", ch.policy_version)
-    ch.topics = _validate_topics(me, body.topics)
+    if body.topics is not None:
+        ch.topics = _validate_topics(me, body.topics)
+    if body.max_disclosure is not None:
+        ch.max_disclosure = body.max_disclosure
+    if body.allowed_result_visibility is not None:
+        ch.allowed_result_visibility = sorted(set(body.allowed_result_visibility))
     ch.policy_version += 1
     ch.updated_at = now
     _snapshot(db, ch, me, now)
     record(db, clock, actor_id=me.id, action="channel.update", object_type="channel", object_id=ch.id,
            policy_version=ch.policy_version)
+    # Same transaction: no open request can survive under a policy it no longer fits.
+    revalidate_open_requests(db, clock, ch, me.id)
     db.commit()
     return owner_view(ch, now)
 
@@ -207,11 +227,25 @@ def _transition(action: str):
         ch.status, ch.updated_at = target, now
         record(db, clock, actor_id=me.id, action=f"channel.{action}", object_type="channel", object_id=ch.id,
                policy_version=ch.policy_version)
+        if action == "close":
+            cancel_open_requests(db, clock, ch, "channel_closed", me.id)
         db.commit()
         return owner_view(ch, now)
 
     endpoint.__name__ = f"{action}_channel"
     return endpoint
+
+
+@router.get("/{channel_id}/policy-versions")
+def policy_versions(channel_id: str, me: Researcher = Depends(verified_researcher), db: Session = Depends(get_db)) -> dict:
+    ch = db.get(Channel, channel_id)
+    if ch is None or ch.owner_id != me.id:
+        raise problem(404, "channel_not_found", "no such channel")
+    rows = db.scalars(select(ChannelPolicyVersion).where(ChannelPolicyVersion.channel_id == ch.id)
+                      .order_by(ChannelPolicyVersion.version)).all()
+    return {"versions": [{"version": v.version, "topics": v.topics, "max_disclosure": v.max_disclosure,
+                          "allowed_result_visibility": v.allowed_result_visibility,
+                          "created_at": _iso(v.created_at)} for v in rows]}
 
 
 for _action in TRANSITIONS:

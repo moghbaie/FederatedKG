@@ -1,4 +1,4 @@
-# FederatedKG (MVP, Phase 2)
+# FederatedKG (MVP, Phase 3)
 
 > **Simulated researchers and synthetic knowledge graphs. No real researcher participation.**
 > Personas A–D cite published work by real scientists *only* as public research-theme inspiration.
@@ -14,9 +14,10 @@ cardinality) without exchanging plaintext entity lists. See [plan.md](plan.md) f
 |---|---|---|
 | 1 | Skeleton, isolated services, synthetic fixtures, health page, PSI-CA library check | done |
 | 2 | Demo identities (A–E), verified membership, channels, 24-hour expiry, topic discovery | done |
-| 3 | Comparison requests, approvals, versioned policy enforcement | next |
+| 3 | Comparison requests, manual approvals, versioned policy enforcement, quotas, audit | done |
+| 4 | Signed tickets, agent-to-agent PSI-CA, result release | next |
 
-## Registry API (Phase 2)
+## Registry API
 
 | Endpoint | Who | Purpose |
 |---|---|---|
@@ -28,11 +29,44 @@ cardinality) without exchanging plaintext entity lists. See [plan.md](plan.md) f
 | `PATCH /v1/channels/{id}` | owner | Edit topics. Requires `expected_policy_version` and creates a new, unchangeable policy version. |
 | `GET /v1/channels` | verified | Other researchers' active, unexpired channels: topics plus `topic_similarity`, nothing else |
 | `GET /v1/channels/mine`, `GET /v1/channels/{id}` | owner / verified | Own channels; a single channel (non-owners see only discoverable channels) |
+| `GET /v1/channels/{id}/policy-versions` | owner | Full history of the channel's policy versions |
+| `POST /v1/channels/{id}/requests` | verified | Request a comparison through an open channel |
+| `POST /v1/researchers/{id}/requests` | verified | One-to-one comparison request |
+| `GET /v1/requests/inbox`, `GET /v1/requests/outbox` | verified | Requests you've received; requests you've sent |
+| `GET /v1/requests/{id}` | the two parties | Status, scope, and `execution_check` once approved |
+| `POST /v1/requests/{id}/approve`, `reject` | recipient | Manual decision, checked against the current policy |
+| `POST /v1/requests/{id}/cancel` | requester | Withdraw a pending or approved request |
+| `GET /v1/requests/{id}/result` | parties permitted by `result_visibility` | Arrives in Phase 4. Never available for requests that aren't completed. |
+| `GET /v1/notifications` | signed in | In-app notices about requests |
+| `GET /v1/audit` | signed in | Your actions, plus events on your channels and on requests you're party to |
 
 How the rules are enforced:
 - **Identity** comes only from the token. A request body that tries to set `owner_id` is rejected.
 - **Persona E** (unverified) can sign in and read `/v1/me`. Everything else returns 403, and each denial is logged in the audit trail.
 - **Expiry** is computed from `expires_at` against the registry clock on every read and action. It doesn't depend on a background job having updated the stored status.
+
+**The request scope contract.** Each request specifies:
+
+```json
+{"scope": {"topics": ["interactomics"], "entity_classes": ["Protein"], "metric": "jaccard",
+           "protocol": "psi_ca", "disclosure": "score_only", "normalization": "fkg-norm/1.0"},
+ "result_visibility": "requester_only", "idempotency_key": "<client-generated>"}
+```
+
+Validation rules:
+- Scope topics must come from the channel's topics. For one-to-one requests, they must come from the recipient's published topics.
+- `evidence` disclosure is always refused in v1.
+- `plaintext_dev` is accepted only when `DEV_PLAINTEXT_MATCHER=1`.
+
+What enforcement looks like:
+- **Policy edits:** editing a policy re-checks every open request on that channel in the same database transaction. Requests that no longer fit are cancelled with `policy_incompatible`.
+- **Closing a channel** cancels its unfinished requests.
+- **Expiry:** when a channel or request expires, its open requests expire with it.
+- **Duplicates and replays:**
+  - Reusing an idempotency key returns the original request.
+  - A second open request with an identical scope is refused.
+- **Quotas:** each requester–recipient pair is limited to 5 requests and 3 distinct scopes per rolling 24 hours. Every refusal is audited.
+- **Concurrency:** approvals, policy edits, closures and submissions take database row locks in a fixed order (channel, then request) and are race-tested against Postgres.
 
 **Test mode** (`FKG_TEST_MODE=1`, the default for the local stack) adds three endpoints:
 - `GET /v1/test/clock`

@@ -13,7 +13,7 @@ from fastapi import Depends, FastAPI
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-from . import channels, identity, testing
+from . import audit_api, channels, identity, notifications, requests, testing
 from .clock import Clock
 from .config import Settings
 from .deps import get_settings
@@ -81,6 +81,9 @@ def create_app(settings: Settings | None = None, clock: Clock | None = None) -> 
 
     app.include_router(identity.router)
     app.include_router(channels.router)
+    app.include_router(requests.router)
+    app.include_router(notifications.router)
+    app.include_router(audit_api.router)
     if settings.test_mode:
         app.include_router(testing.router)
     return app
