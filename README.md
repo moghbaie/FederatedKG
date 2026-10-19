@@ -1,206 +1,130 @@
-# FederatedKG (MVP, Phase 6)
+# FederatedKG
 
 > **Simulated researchers and synthetic knowledge graphs. No real researcher participation.**
-> Personas A–D cite published work by real scientists *only* as public research-theme inspiration.
-> Those scientists are not users, participants or endorsers. Every graph, hypothesis and observation is synthetic.
+> Personas A–D cite published work by real scientists *only* as public research-theme inspiration. Those scientists
+> are not users, participants or endorsers. Every account, graph, hypothesis, observation and permission is synthetic.
 
-FederatedKG lets researcher agents discover topic overlap through a central registry and, after
-manual approval, compare private knowledge graphs using PSI-CA (private set intersection
-cardinality) without exchanging plaintext entity lists. See [plan.md](plan.md) for the full plan.
+FederatedKG is a local web MVP. Researchers keep **private biology knowledge graphs on their own agents**, discover
+each other through **published topics**, and compare graphs **only with manual approval**. The comparison uses
+**PSI-CA** (private set intersection cardinality), so neither side sends its entity list. The central registry
+coordinates identities, channels, requests, signed tickets and audit records, but it **cannot read any graph**.
+
+![Matches screen](docs/screenshots/08-matches.png)
+
+## Quick start
+
+Requirements: Docker (Engine or Desktop) with Compose v2, [uv](https://docs.astral.sh/uv/), and Node 22 (for the
+browser tests).
+
+```sh
+git clone https://github.com/moghbaie/FederatedKG.git && cd FederatedKG
+docker compose up -d --build --wait      # keys, registry, Postgres, 4 agents, web app
+```
+
+Open **http://localhost:8080**, click **Reset demo**, and sign in as any persona. Each browser tab keeps its own
+session, so you can play all four researchers side by side. The fixtures are committed and the registry seeds the
+public profiles at start-up, so there's no separate seeding step.
+
+For a 2-minute narrated run of the whole workflow without clicking:
+
+```sh
+uv run python scripts/demo.py
+```
+
+## Commands
+
+| Task | Command |
+|---|---|
+| Start, or rebuild after changes | `docker compose up -d --build --wait` |
+| Stop, keeping data | `docker compose down` |
+| Stop and wipe all data and keys | `docker compose down -v` |
+| Reset the demo state (test mode) | **Reset demo** in the UI, or `uv run python scripts/reset_demo.py` |
+| Regenerate fixtures after editing `scripts/fixture_spec.py` | `uv run python scripts/build_fixtures.py` (CI checks they're current) |
+| Unit, in-process and static security tests (no stack needed) | `uv sync` then `uv run pytest` |
+| Live stack tests (API, isolation, PSI-CA, leak scan) | `uv run pytest -m live` |
+| Browser tests | `cd frontend && npm ci && npx playwright install chromium && npx playwright test` |
+| Everything, plus `docs/test-report.md` | `uv run python scripts/run_e2e.py` |
+| Refresh the documentation screenshots | `cd frontend && FKG_SCREENSHOTS=1 npx playwright test` |
+
+## What it demonstrates
+
+- **Journey A (one-to-many).**
+  1. Persona A opens a 24-hour, topics-only channel for verified researchers.
+  2. B, C and D discover it and request a comparison.
+  3. A approves B, rejects C and leaves D pending. Only B receives a result.
+  4. A pauses the channel and tightens the policy. A stale approval is invalidated, but B's earlier result stands.
+  5. 24 hours later the channel expires and unfinished work lapses.
+- **Journey B (one-to-one).** C sends D a targeted request. D approves, and both get their own signed result.
+- **Owner control.** Pause, resume, close and versioned policy edits apply immediately. Result visibility is set
+  separately from permission to compare. Nothing is ever sent automatically.
+- **Privacy.**
+  - Agent-to-agent PSI-CA, with exact counts kept inside the computing agent.
+  - Only coarse bands are released, and results under 3 shared items are suppressed.
+  - Tickets and tokens are Ed25519-signed, single-use and bound to the request.
+  - Each agent applies its own local policy, independently of the registry.
+  - A leak scan finds no private identifier anywhere outside its own agent.
+
+## Documentation
+
+| Document | Contents |
+|---|---|
+| [docs/architecture.md](docs/architecture.md) | Components, networks and storage isolation, comparison sequence, state machines, similarity, data |
+| [docs/threat-model.md](docs/threat-model.md) | Assets, actors, trust boundaries, threats → mitigations → tests, residual risks, deployment checklist |
+| [docs/api.md](docs/api.md) | Registry, test-mode and internal endpoints, and the scope contract |
+| [docs/walkthrough.md](docs/walkthrough.md) | Screenshots of all eight screens through the full scenario |
+| [docs/demo-script.md](docs/demo-script.md) | Presenter script for a live click-through, plus the narrated API demo |
+| [docs/test-report.md](docs/test-report.md) | Latest generated test report (suites, counts, environment) |
+| [plan.md](plan.md) | The consolidated MVP plan and v1 decisions |
+
+## Repository layout
+
+| Path | Contents |
+|---|---|
+| `frontend/` | React web app (eight screens), nginx proxy, Playwright tests (`frontend/tests/e2e`) |
+| `registry/` | FastAPI registry, Alembic migrations |
+| `agents/common/` | The single agent image. `agents/persona_*/` hold per-persona configuration and local policy only. |
+| `fkg_protocol/` | Keys, service tokens, tickets, user tokens, result packages, `keygen` |
+| `similarity/` | `public_topics` (Stage 1), `psi_ca` (OpenMined PSI 2.0.6), `scoped_baseline` (dev-only plaintext oracle) |
+| `data/synthetic/` | `public/` profiles and sources (the registry's only fixture data); `private/` graphs (one per agent); `ground_truth.json` (tests only) |
+| `scripts/` | Fixture builder, demo, reset, test runner |
+| `tests/` | `unit`, `protocol`, `agents`, `registry` (in-process), `integration` and `security` (live) |
 
 ## Status
 
 | Phase | Scope | State |
 |---|---|---|
-| 1 | Skeleton, isolated services, synthetic fixtures, health page, PSI-CA library check | done |
-| 2 | Demo identities (A–E), verified membership, channels, 24-hour expiry, topic discovery | done |
-| 3 | Comparison requests, manual approvals, versioned policy enforcement, quotas, audit | done |
-| 4 | Signed tickets, service authentication, agent-to-agent PSI-CA, guarded release, leak scan | done |
-| 5 | Web UI: eight screens, owner-only My KG, local contradiction check | done |
-| 6 | Automated four-researcher browser scenario (pause, tightening, 24 h expiry, no leakage) | done |
-| 7 | Documentation, threat model, demo script, test report | next |
+| 1 | Skeleton, isolated services, synthetic fixtures | done |
+| 2 | Demo identities, verified membership, channels, 24-hour expiry, topic discovery | done |
+| 3 | Requests, manual approvals, versioned policy, quotas, audit | done |
+| 4 | Tickets, service authentication, agent-to-agent PSI-CA, guarded release, leak scan | done |
+| 5 | Web UI with owner-only My KG | done |
+| 6 | Automated four-researcher browser scenario | done |
+| 7 | Documentation, threat model, demo script, test report | done |
 
-## Registry API
+## Known limitations
 
-| Endpoint | Who | Purpose |
-|---|---|---|
-| `POST /v1/auth/demo-login` | anyone | Demo sign-in for a simulated account. Returns a 30-minute signed token. Stands in for OIDC. |
-| `GET /v1/me` | any signed-in account | Own public profile |
-| `GET /v1/researchers` | verified | Directory of other verified researchers, ranked by topic match |
-| `POST /v1/channels` | verified | Create a draft channel. Topics must be a subset of the owner's published topics. |
-| `POST /v1/channels/{id}/activate`, `pause`, `resume`, `close` | owner | Lifecycle controls. Activation starts the 24-hour countdown, and pausing doesn't extend it. |
-| `PATCH /v1/channels/{id}` | owner | Edit topics. Requires `expected_policy_version` and creates a new, unchangeable policy version. |
-| `GET /v1/channels` | verified | Other researchers' active, unexpired channels: topics plus `topic_similarity`, nothing else |
-| `GET /v1/channels/mine`, `GET /v1/channels/{id}` | owner / verified | Own channels; a single channel (non-owners see only discoverable channels) |
-| `GET /v1/channels/{id}/policy-versions` | owner | Full history of the channel's policy versions |
-| `POST /v1/channels/{id}/requests` | verified | Request a comparison through an open channel |
-| `POST /v1/researchers/{id}/requests` | verified | One-to-one comparison request |
-| `GET /v1/requests/inbox`, `GET /v1/requests/outbox` | verified | Requests you've received; requests you've sent |
-| `GET /v1/requests/{id}` | the two parties | Status, scope, and `execution_check` once approved |
-| `POST /v1/requests/{id}/approve`, `reject` | recipient | Manual decision, checked against the current policy |
-| `POST /v1/requests/{id}/cancel` | requester | Withdraw a pending or approved request |
-| `POST /v1/requests/{id}/run` | requester | Run an approved comparison. Returns 202 and runs in the background. |
-| `GET /v1/requests/{id}/result` | parties permitted by `result_visibility` | Your own signed result package, once completed |
-| `GET /v1/notifications` | signed in | In-app notices about requests |
-| `GET /v1/audit` | signed in | Your actions, plus events on your channels and on requests you're party to |
+- **PSI-CA disclosure.** PSI-CA reveals set sizes, and it reveals the exact overlap to the output agent. Bands are a
+  display policy, not a cryptographic guarantee. The model is semi-honest, and the integration hasn't had an
+  external review.
+- **Probing.** Chosen-input probing is slowed by quotas, minimum set sizes and low-count suppression, but not
+  prevented.
+- **Identity and transport.** The demo login has no real authentication. Internal traffic is HTTP authenticated by
+  signed tokens. Deployment needs OIDC, mTLS and managed keys.
+- **Test mode is on locally** (adjustable clock, reset, payload capture, injected delay). Advancing the clock 24
+  hours signs out other open tabs, because their sessions expire on the same clock.
+- **Topic scoping.** Scope topics gate a comparison but don't filter entities, because fixture entities aren't tagged
+  with individual topics.
+- **Not in v1:** evidence sharing, contradiction comparison across researchers, real onboarding, PSI variants beyond
+  PSI-CA, and multi-worker registry deployment.
 
-How the rules are enforced:
-- **Identity** comes only from the token. A request body that tries to set `owner_id` is rejected.
-- **Persona E** (unverified) can sign in and read `/v1/me`. Everything else returns 403, and each denial is logged in the audit trail.
-- **Expiry** is computed from `expires_at` against the registry clock on every read and action. It doesn't depend on a background job having updated the stored status.
-
-**The request scope contract.** Each request specifies:
-
-```json
-{"scope": {"topics": ["interactomics"], "entity_classes": ["Protein"], "metric": "jaccard",
-           "protocol": "psi_ca", "disclosure": "score_only", "normalization": "fkg-norm/1.0"},
- "result_visibility": "requester_only", "idempotency_key": "<client-generated>"}
-```
-
-Validation rules:
-- Scope topics must come from the channel's topics. For one-to-one requests, they must come from the recipient's published topics.
-- `evidence` disclosure is always refused in v1.
-- `plaintext_dev` is accepted only when `DEV_PLAINTEXT_MATCHER=1`.
-
-What enforcement looks like:
-- **Policy edits:** editing a policy re-checks every open request on that channel in the same database transaction. Requests that no longer fit are cancelled with `policy_incompatible`.
-- **Closing a channel** cancels its unfinished requests.
-- **Expiry:** when a channel or request expires, its open requests expire with it.
-- **Duplicates and replays:**
-  - Reusing an idempotency key returns the original request.
-  - A second open request with an identical scope is refused.
-- **Quotas:** each requester–recipient pair is limited to 5 requests and 3 distinct scopes per rolling 24 hours. Every refusal is audited.
-- **Concurrency:** approvals, policy edits, closures and submissions take database row locks in a fixed order (channel, then request) and are race-tested against Postgres.
-
-**Test mode** (`FKG_TEST_MODE=1`, the default for the local stack) adds three endpoints:
-- `GET /v1/test/clock`
-- `POST /v1/test/clock/advance`
-- `POST /v1/test/reset`, also available as `uv run python scripts/reset_demo.py`
-
-Turn test mode off anywhere other than a local demo.
-
-## Web app
-
-Open http://localhost:8080 and pick a simulated account. Each browser tab keeps its own session, so you can play all
-four researchers side by side. A banner on every page says the researchers and data are simulated.
-
-| Screen | What it does |
-|---|---|
-| Sign-in | Five labelled demo accounts, system health, and **Reset demo** (test mode only) |
-| My KG | Your own graph, served by **your agent** through `/agent/<you>/owner/graph`. The registry never sees it. Public topics are green diamonds; everything else is private. Also lists synthetic hypotheses, observations and the local contradiction check. |
-| Directory | Verified researchers ranked by published-topic match, with a one-to-one request form |
-| Discover | Open channels (topics only) with topic-match scores and countdowns, plus a request form limited by the owner's policy |
-| My channels | Create, activate (24 h), pause, resume and close channels; edit the policy as a new version; view version history |
-| Requests | Inbox (approve or reject) and Sent (run an approved comparison, or cancel) |
-| Matches | Signed PSI-CA results as bands, a protocol badge, what each side learned, provenance, a manual in-app contact request, and evidence sharing shown as disabled |
-| Audit | Your timeline of policy versions, decisions, runs, releases, withholdings and denials |
-
-The **demo clock** buttons (+1 h, +24 h, test mode only) advance the registry and agent clocks together, so you can
-watch expiry happen.
-- The tab that advanced the clock is signed in again automatically.
-- Sessions in other tabs last 30 minutes on the same clock, so they expire and those tabs must sign in again.
-- **Reset demo** also clears each agent's local state: its single-use ticket record, its per-counterpart limits and its exact-count log.
-
-Only the owner's own session can open My KG: the agent requires a registry-signed (Ed25519) user token whose subject
-is its persona. Other sessions get 403, and the proxy exposes no other agent path.
-
-## How a comparison runs (Phase 4)
-
-```text
-requester ──POST /run──> registry ── signed ticket ──> requester's agent (output party)
-                                                          │  verifies ticket + its own local policy
-                                                          │  asks registry: ticket still active?
-                                                          ▼
-                                   peer agent <── PSI-CA (blinded messages only, `peer` network)
-                                                          │  exact |X∩Y| stays in this agent's log
-                                                          │  re-checks ticket before release
-                                                          ▼
-registry <── Ed25519-signed package (band [+ size buckets]) ── re-check under row locks ──> stored
-```
-
-- **Keys:** a one-shot `keygen` container gives each service its own Ed25519 key, mounted only into that service, plus a shared public keyring. It runs automatically on `docker compose up`.
-- **Service tokens:** every call between services carries a 60-second token bound to its caller, target, method, path and body hash. Tokens can't be replayed.
-- **Tickets** are single-use and expire after 5 minutes. Each is bound to the request, both participants, the scope, the policy version and the result recipients.
-- **Independent checks:** each agent also applies its own `agents/persona_*/policy.json`, which covers its published topics only, the allowed classes and disclosure levels, a minimum set size and a daily limit per counterpart.
-- **Release:**
-  - The registry stores a result only if the request is still running, the ticket is still active, the policy still fits and the channel is active.
-  - Policy tightening, closure or expiry while a comparison is running revokes the ticket, so nothing is stored.
-  - A pause during the run keeps the approval, so the comparison can run again after the channel resumes.
-- **Packages:**
-  - A package may contain only the fields its disclosure level allows. Any number or extra field is rejected.
-  - Exact counts stay in the computing agent's `comparisons.jsonl` and never leave it.
-- **Leak scan** (`tests/integration/test_comparisons_live.py`):
-  - It searches every captured agent payload, the registry database dump and all container logs. It looks for every private identifier, its SHA-256 hash and its base64 form.
-  - A negative control proves the scan catches leaks: with `DEV_PLAINTEXT_MATCHER=1`, a `plaintext_dev` comparison sends 21 identifiers over the wire, and the scan flags them.
-
-## Run
-
-Requirements: Docker Desktop or Engine with Compose v2, [uv](https://docs.astral.sh/uv/), and Node 22 (frontend development only).
-
-```sh
-docker compose up -d --build --wait      # registry, postgres, 4 agents, frontend
-open http://localhost:8080               # health page and simulated accounts
-uv sync
-uv run pytest                            # unit and static security tests (no stack needed)
-uv run pytest -m live                    # live API, isolation, PSI-CA and leak-scan tests
-cd frontend && npx playwright install chromium && npx playwright test   # browser end-to-end tests
-FKG_SCREENSHOTS=1 npx playwright test    # optional: capture screenshots of every screen
-npx playwright test four_researchers --repeat-each=2   # Phase 6 scenario, twice, to check repeatability
-docker compose down -v                   # stop and wipe volumes
-```
-
-To regenerate the fixtures after editing `scripts/fixture_spec.py`, run `uv run python scripts/build_fixtures.py`. CI fails if the committed fixtures are stale.
-
-## Layout
-
-| Path | Contents |
-|---|---|
-| `registry/` | FastAPI coordination service. It has no volumes and no route to private graphs. |
-| `agents/common/` | The single agent image. `agents/persona_*` hold per-persona configuration only. |
-| `similarity/` | `public_topics` (Stage 1), `scoped_baseline` (plaintext-dev oracle, Phase 4a), `psi_ca` (OpenMined PSI 2.0.6). |
-| `data/synthetic/public/` | Public discovery profiles and source records. The registry image contains only these. |
-| `data/synthetic/private/` | One graph and ID mapping per persona. Each is bind-mounted read-only into its own agent only. |
-| `data/synthetic/ground_truth.json` | Test-only expected values. Excluded from every image build context. |
-
-## Isolation model (local)
-
-Four Docker networks separate the services:
-
-| Network | Connects |
-|---|---|
-| `edge` | frontend and registry |
-| `data` | registry and postgres (internal) |
-| `agents` | registry and agents (internal) |
-| `peer` | agent to agent (internal; the registry is not attached) |
-
-- Only the frontend publishes a host port.
-- Agents expose `/internal/health` and nothing else. Their health response has no counts or identifiers.
-- Each graph contains a unique canary entity. Tests check that no canary appears in the registry container or in another persona's agent.
-
-Docker isolation simulates institutional boundaries and does not replace them. Deployment needs HTTPS and mTLS, or an equivalent service identity.
+See [docs/threat-model.md](docs/threat-model.md) for the full list and the deployment checklist.
 
 ## Data provenance
 
-- Protein identifiers are UniProtKB accessions. All were verified as reviewed entries on 2026-10-19; UniProt data is licensed CC BY 4.0.
-- Method identifiers are PSI-MI terms, verified through EBI OLS4.
-- Topics use a local vocabulary, `urn:fkg:topic:*`.
-- Citations were checked through Crossref. See `data/synthetic/public/sources.csv`.
-
-## Known limitations (so far)
-
-- The test-clock offset is held in the registry process, which assumes a single registry worker (the default).
-- Unless `REGISTRY_TOKEN_SECRET` is set, the token key is random per start, so a restart signs everyone out.
-- **Test mode** (on by default locally) adds three things:
-  - the adjustable clock, which is pushed to agents through a signed call;
-  - a delay that can be injected between computing and releasing a result;
-  - payload capture (`FKG_CAPTURE_PAYLOADS`) for the leak scan.
-
-  Turn all three off anywhere other than a local demo.
-- **Topic scoping:** scope topics are a gate. Both the registry and each agent's local policy must allow them, but they don't filter entities, because fixture entities aren't tagged with individual topics.
-- **Inter-service transport** inside Docker is plain HTTP authenticated by signed tokens. Deployment needs TLS/mTLS.
-- PSI-CA reveals the exact intersection size to the output party and each set's size to the other party. Coarse bands will be a display policy, not a cryptographic guarantee. The integration is semi-honest and has not been reviewed.
-- The Postgres password in `.env.example` and the defaults are for development only.
+- Protein identifiers are UniProtKB accessions, all verified as reviewed entries (UniProt, CC BY 4.0).
+- Detection methods are PSI-MI terms, verified through EBI OLS4.
+- Citations were verified through Crossref. See `data/synthetic/public/sources.csv` and [NOTICE](NOTICE).
 
 ## License
 
-Apache License 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE), which also covers third-party data attribution.
+Apache License 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
