@@ -13,7 +13,7 @@ from fastapi import Depends, FastAPI
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-from . import audit_api, channels, identity, notifications, requests, testing
+from . import audit_api, channels, execution, identity, notifications, requests, testing
 from .clock import Clock
 from .config import Settings
 from .deps import get_settings
@@ -57,7 +57,7 @@ def create_app(settings: Settings | None = None, clock: Clock | None = None) -> 
     async def system_health(s: Settings = Depends(get_settings)) -> dict:
         agents = {}
         async with httpx.AsyncClient(timeout=3.0) as client:
-            for agent_id, url in sorted(s.agent_health_urls.items()):
+            for agent_id, url in sorted(s.agent_health_urls.items()):  # health is unauthenticated
                 try:
                     body = (await client.get(url)).json()
                     # Forward only the fixed, content-free health fields.
@@ -84,6 +84,7 @@ def create_app(settings: Settings | None = None, clock: Clock | None = None) -> 
     app.include_router(requests.router)
     app.include_router(notifications.router)
     app.include_router(audit_api.router)
+    execution.install(app, settings)
     if settings.test_mode:
         app.include_router(testing.router)
     return app

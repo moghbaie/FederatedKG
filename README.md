@@ -1,4 +1,4 @@
-# FederatedKG (MVP, Phase 3)
+# FederatedKG (MVP, Phase 4)
 
 > **Simulated researchers and synthetic knowledge graphs. No real researcher participation.**
 > Personas A–D cite published work by real scientists *only* as public research-theme inspiration.
@@ -15,7 +15,8 @@ cardinality) without exchanging plaintext entity lists. See [plan.md](plan.md) f
 | 1 | Skeleton, isolated services, synthetic fixtures, health page, PSI-CA library check | done |
 | 2 | Demo identities (A–E), verified membership, channels, 24-hour expiry, topic discovery | done |
 | 3 | Comparison requests, manual approvals, versioned policy enforcement, quotas, audit | done |
-| 4 | Signed tickets, agent-to-agent PSI-CA, result release | next |
+| 4 | Signed tickets, service authentication, agent-to-agent PSI-CA, guarded release, leak scan | done |
+| 5 | Web UI for all eight screens | next |
 
 ## Registry API
 
@@ -36,7 +37,8 @@ cardinality) without exchanging plaintext entity lists. See [plan.md](plan.md) f
 | `GET /v1/requests/{id}` | the two parties | Status, scope, and `execution_check` once approved |
 | `POST /v1/requests/{id}/approve`, `reject` | recipient | Manual decision, checked against the current policy |
 | `POST /v1/requests/{id}/cancel` | requester | Withdraw a pending or approved request |
-| `GET /v1/requests/{id}/result` | parties permitted by `result_visibility` | Arrives in Phase 4. Never available for requests that aren't completed. |
+| `POST /v1/requests/{id}/run` | requester | Run an approved comparison. Returns 202 and runs in the background. |
+| `GET /v1/requests/{id}/result` | parties permitted by `result_visibility` | Your own signed result package, once completed |
 | `GET /v1/notifications` | signed in | In-app notices about requests |
 | `GET /v1/audit` | signed in | Your actions, plus events on your channels and on requests you're party to |
 
@@ -74,6 +76,35 @@ What enforcement looks like:
 - `POST /v1/test/reset`, also available as `uv run python scripts/reset_demo.py`
 
 Turn test mode off anywhere other than a local demo.
+
+## How a comparison runs (Phase 4)
+
+```text
+requester ──POST /run──> registry ── signed ticket ──> requester's agent (output party)
+                                                          │  verifies ticket + its own local policy
+                                                          │  asks registry: ticket still active?
+                                                          ▼
+                                   peer agent <── PSI-CA (blinded messages only, `peer` network)
+                                                          │  exact |X∩Y| stays in this agent's log
+                                                          │  re-checks ticket before release
+                                                          ▼
+registry <── Ed25519-signed package (band [+ size buckets]) ── re-check under row locks ──> stored
+```
+
+- **Keys:** a one-shot `keygen` container gives each service its own Ed25519 key, mounted only into that service, plus a shared public keyring. It runs automatically on `docker compose up`.
+- **Service tokens:** every call between services carries a 60-second token bound to its caller, target, method, path and body hash. Tokens can't be replayed.
+- **Tickets** are single-use and expire after 5 minutes. Each is bound to the request, both participants, the scope, the policy version and the result recipients.
+- **Independent checks:** each agent also applies its own `agents/persona_*/policy.json`, which covers its published topics only, the allowed classes and disclosure levels, a minimum set size and a daily limit per counterpart.
+- **Release:**
+  - The registry stores a result only if the request is still running, the ticket is still active, the policy still fits and the channel is active.
+  - Policy tightening, closure or expiry while a comparison is running revokes the ticket, so nothing is stored.
+  - A pause during the run keeps the approval, so the comparison can run again after the channel resumes.
+- **Packages:**
+  - A package may contain only the fields its disclosure level allows. Any number or extra field is rejected.
+  - Exact counts stay in the computing agent's `comparisons.jsonl` and never leave it.
+- **Leak scan** (`tests/integration/test_comparisons_live.py`):
+  - It searches every captured agent payload, the registry database dump and all container logs. It looks for every private identifier, its SHA-256 hash and its base64 form.
+  - A negative control proves the scan catches leaks: with `DEV_PLAINTEXT_MATCHER=1`, a `plaintext_dev` comparison sends 21 identifiers over the wire, and the scan flags them.
 
 ## Run
 
@@ -129,7 +160,14 @@ Docker isolation simulates institutional boundaries and does not replace them. D
 
 - The test-clock offset is held in the registry process, which assumes a single registry worker (the default).
 - Unless `REGISTRY_TOKEN_SECRET` is set, the token key is random per start, so a restart signs everyone out.
-- PSI-CA is integrated only as a library smoke test. Agent-to-agent PSI-CA, tickets and service tokens come in Phase 4.
+- **Test mode** (on by default locally) adds three things:
+  - the adjustable clock, which is pushed to agents through a signed call;
+  - a delay that can be injected between computing and releasing a result;
+  - payload capture (`FKG_CAPTURE_PAYLOADS`) for the leak scan.
+
+  Turn all three off anywhere other than a local demo.
+- **Topic scoping:** scope topics are a gate. Both the registry and each agent's local policy must allow them, but they don't filter entities, because fixture entities aren't tagged with individual topics.
+- **Inter-service transport** inside Docker is plain HTTP authenticated by signed tokens. Deployment needs TLS/mTLS.
 - PSI-CA reveals the exact intersection size to the output party and each set's size to the other party. Coarse bands will be a display policy, not a cryptographic guarantee. The integration is semi-honest and has not been reviewed.
 - The Postgres password in `.env.example` and the defaults are for development only.
 

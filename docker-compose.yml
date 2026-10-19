@@ -4,22 +4,64 @@
 # Networks:
 #   edge   frontend <-> registry (only network with a host port, via frontend)
 #   data   registry <-> postgres (internal)
-#   agents registry <-> agents   (internal; registry reaches agent endpoints only)
-#   peer   agent <-> agent       (internal; registry is NOT attached)
+#   agents registry <-> agents   (internal; tickets, ticket status, service-authenticated)
+#   peer   agent <-> agent       (internal; PSI-CA messages; registry is NOT attached)
+#
+# Keys: `keygen` runs once and writes each service's Ed25519 private key only into that
+# service's own volume; every service mounts its own key volume plus the public keyring.
 
-# One shared image. Only agent_a builds it (parallel builds of one tag race in BuildKit);
-# the other agents reuse the local tag.
 x-agent: &agent
   image: federatedkg-agent:dev
   pull_policy: never
   networks: [agents, peer]
+  depends_on:
+    keygen: { condition: service_completed_successfully }
   healthcheck:
     test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/internal/health')"]
     interval: 5s
     timeout: 3s
     retries: 20
 
+x-agent-env: &agent-env
+  REGISTRY_URL: http://registry:8000
+  PEER_URLS: persona_a=http://agent_a:8000,persona_b=http://agent_b:8000,persona_c=http://agent_c:8000,persona_d=http://agent_d:8000
+  SERVICE_PRIVATE_KEY: /keys/private/private.pem
+  SERVICE_KEYRING_DIR: /keys/public
+  LOCAL_POLICY: /config/policy.json
+  FKG_TEST_MODE: ${FKG_TEST_MODE:-1}
+  # Test-only payload recording for the leak scan (inside each agent's /tmp).
+  FKG_CAPTURE_PAYLOADS: ${FKG_CAPTURE_PAYLOADS:-1}
+  DEV_PLAINTEXT_MATCHER: ${DEV_PLAINTEXT_MATCHER:-0}
+
 services:
+  # Builds the registry image (reused by keygen) and exits immediately.
+  registry_image:
+    build:
+      context: .
+      dockerfile: registry/Dockerfile
+    image: federatedkg-registry:dev
+    pull_policy: build
+    network_mode: none
+    command: ["true"]
+
+  keygen:
+    image: federatedkg-registry:dev
+    pull_policy: never
+    user: "0"
+    network_mode: none
+    environment:
+      KEYGEN_OUT: /out
+    command: ["python", "-m", "fkg_protocol.keygen"]
+    volumes:
+      - keys_registry:/out/registry
+      - keys_persona_a:/out/persona_a
+      - keys_persona_b:/out/persona_b
+      - keys_persona_c:/out/persona_c
+      - keys_persona_d:/out/persona_d
+      - keys_public:/out/public
+    depends_on:
+      registry_image: { condition: service_completed_successfully }
+
   postgres:
     image: postgres:16-alpine
     environment:
@@ -36,21 +78,25 @@ services:
       retries: 20
 
   registry:
-    build:
-      context: .
-      dockerfile: registry/Dockerfile
     image: federatedkg-registry:dev
-    # No volumes: the registry must not be able to read any private graph.
+    pull_policy: never
+    # Only its own signing key and the public keyring: no graph, no agent key.
+    volumes:
+      - keys_registry:/keys/private:ro
+      - keys_public:/keys/public:ro
     environment:
-      # Test mode enables the adjustable clock and /v1/test/reset. Local demo only; set 0 otherwise.
+      # Test mode enables the adjustable clock and /v1/test/*. Local demo only; set 0 otherwise.
       FKG_TEST_MODE: ${FKG_TEST_MODE:-1}
+      DEV_PLAINTEXT_MATCHER: ${DEV_PLAINTEXT_MATCHER:-0}
       REGISTRY_TOKEN_SECRET: ${REGISTRY_TOKEN_SECRET:-}
       DATABASE_URL: postgresql+psycopg://fkg_registry:${POSTGRES_PASSWORD:-fkg_dev_only}@postgres:5432/fkg_registry
-      AGENT_HEALTH_URLS: >-
-        persona_a=http://agent_a:8000/internal/health,persona_b=http://agent_b:8000/internal/health,persona_c=http://agent_c:8000/internal/health,persona_d=http://agent_d:8000/internal/health
+      AGENT_URLS: persona_a=http://agent_a:8000,persona_b=http://agent_b:8000,persona_c=http://agent_c:8000,persona_d=http://agent_d:8000
+      SERVICE_PRIVATE_KEY: /keys/private/private.pem
+      SERVICE_KEYRING_DIR: /keys/public
     networks: [edge, data, agents]
     depends_on:
       postgres: { condition: service_healthy }
+      keygen: { condition: service_completed_successfully }
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/health')"]
       interval: 5s
@@ -64,30 +110,46 @@ services:
       dockerfile: agents/common/Dockerfile
     pull_policy: build
     env_file: agents/persona_a/agent.env
+    environment: *agent-env
     volumes:
       - ./data/synthetic/private/persona_a.ttl:/fixtures/graph.ttl:ro
+      - ./agents/persona_a/policy.json:/config/policy.json:ro
       - kg_persona_a:/var/lib/fkg
+      - keys_persona_a:/keys/private:ro
+      - keys_public:/keys/public:ro
 
   agent_b:
     <<: *agent
     env_file: agents/persona_b/agent.env
+    environment: *agent-env
     volumes:
       - ./data/synthetic/private/persona_b.ttl:/fixtures/graph.ttl:ro
+      - ./agents/persona_b/policy.json:/config/policy.json:ro
       - kg_persona_b:/var/lib/fkg
+      - keys_persona_b:/keys/private:ro
+      - keys_public:/keys/public:ro
 
   agent_c:
     <<: *agent
     env_file: agents/persona_c/agent.env
+    environment: *agent-env
     volumes:
       - ./data/synthetic/private/persona_c.ttl:/fixtures/graph.ttl:ro
+      - ./agents/persona_c/policy.json:/config/policy.json:ro
       - kg_persona_c:/var/lib/fkg
+      - keys_persona_c:/keys/private:ro
+      - keys_public:/keys/public:ro
 
   agent_d:
     <<: *agent
     env_file: agents/persona_d/agent.env
+    environment: *agent-env
     volumes:
       - ./data/synthetic/private/persona_d.ttl:/fixtures/graph.ttl:ro
+      - ./agents/persona_d/policy.json:/config/policy.json:ro
       - kg_persona_d:/var/lib/fkg
+      - keys_persona_d:/keys/private:ro
+      - keys_public:/keys/public:ro
 
   frontend:
     build:
@@ -116,3 +178,9 @@ volumes:
   kg_persona_b: {}
   kg_persona_c: {}
   kg_persona_d: {}
+  keys_registry: {}
+  keys_persona_a: {}
+  keys_persona_b: {}
+  keys_persona_c: {}
+  keys_persona_d: {}
+  keys_public: {}

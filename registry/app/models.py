@@ -96,6 +96,36 @@ class ComparisonRequest(Base):
     idempotency_key: Mapped[str] = mapped_column(String(128))
 
 
+class Ticket(Base):
+    """A single-use comparison authorization. Agents ask for its status before computing and releasing."""
+
+    __tablename__ = "tickets"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)  # = ticket jti
+    request_id: Mapped[str] = mapped_column(ForeignKey("comparison_requests.id"), index=True)
+    status: Mapped[str] = mapped_column(String(16))  # ISSUED | CONSUMED | REVOKED
+    status_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    policy_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class ComparisonResult(Base):
+    """A released, producer-signed result package for one consumer. Never holds exact counts or IDs."""
+
+    __tablename__ = "comparison_results"
+    __table_args__ = (UniqueConstraint("request_id", "consumer_id"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    request_id: Mapped[str] = mapped_column(ForeignKey("comparison_requests.id"), index=True)
+    ticket_id: Mapped[str] = mapped_column(ForeignKey("tickets.id"))
+    producer_id: Mapped[str] = mapped_column(String(64))
+    consumer_id: Mapped[str] = mapped_column(ForeignKey("researchers.id"))
+    package: Mapped[dict] = mapped_column(JSON)
+    signature: Mapped[str] = mapped_column(String(4096))
+    released_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class Notification(Base):
     """In-app system notices about requests. Never sent outside the app, never carries graph data."""
 

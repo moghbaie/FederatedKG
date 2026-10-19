@@ -5,6 +5,7 @@ RUN useradd --system --uid 10001 registry
 COPY registry/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 COPY registry/app /app/app
+COPY fkg_protocol /app/fkg_protocol
 COPY registry/alembic.ini /app/alembic.ini
 COPY registry/migrations /app/migrations
 COPY similarity/public_topics /app/similarity/public_topics

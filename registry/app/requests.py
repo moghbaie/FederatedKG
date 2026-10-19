@@ -18,12 +18,13 @@ from .audit import record
 from .clock import Clock, as_utc
 from .config import Settings
 from .deps import get_clock, get_db, get_settings, problem, verified_researcher
-from .models import Channel, ComparisonRequest, Researcher
+from .models import Channel, ComparisonRequest, Researcher, Ticket
 from .notifications import notify
 from .policy import Policy, Scope, fingerprint, incompatibility
 from .status import OPEN_REQUEST, channel_policy, channel_status, request_status, targeted_policy
 
 router = APIRouter(prefix="/v1")
+TERMINAL_REVOKING = ("CANCELLED", "EXPIRED", "FAILED", "REJECTED")
 
 
 class RequestCreate(BaseModel):
@@ -42,10 +43,15 @@ def _set_status(db: Session, clock: Clock, req: ComparisonRequest, status: str, 
     req.status, req.status_reason, req.updated_at = status, reason, now
     if status in ("APPROVED", "REJECTED"):
         req.decision_at = now
+    if status in TERMINAL_REVOKING:
+        # Outstanding tickets die with the request: agents check status before computing and releasing.
+        for t in db.scalars(select(Ticket).where(Ticket.request_id == req.id, Ticket.status == "ISSUED")).all():
+            t.status, t.status_reason = "REVOKED", reason or status.lower()
     record(db, clock, actor_id=actor_id, action=action, object_type="request", object_id=req.id,
            reason_code=reason, policy_version=policy_version)
     for rid in notify_ids:
-        notify(db, clock, rid, kind, req.id)
+        if kind:
+            notify(db, clock, rid, kind, req.id)
 
 
 def _open_channel_requests(db: Session, channel_id: str) -> list[ComparisonRequest]:
@@ -267,18 +273,6 @@ def _party_request(db: Session, me: Researcher, request_id: str, lock: bool = Fa
 def get_request(request_id: str, me: Researcher = Depends(verified_researcher), db: Session = Depends(get_db),
                 clock: Clock = Depends(get_clock)) -> dict:
     return view(db, _party_request(db, me, request_id), clock.now())
-
-
-@router.get("/requests/{request_id}/result")
-def get_result(request_id: str, me: Researcher = Depends(verified_researcher), db: Session = Depends(get_db),
-               clock: Clock = Depends(get_clock)) -> dict:
-    req = _party_request(db, me, request_id)
-    ch = db.get(Channel, req.channel_id) if req.channel_id else None
-    if me.id == req.recipient_id and req.result_visibility == "requester_only":
-        raise problem(403, "result_not_visible", "the result is visible to the requester only")
-    status = request_status(req, ch, clock.now())
-    # Results are produced in Phase 4; until then nothing (and never anything for non-completed requests).
-    raise problem(409, "result_unavailable", f"no result is available for a {status.lower()} request")
 
 
 # ---- decisions --------------------------------------------------------------------------------

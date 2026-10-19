@@ -1,0 +1,21 @@
+{
+  "allowed_topics": [
+    "proteomics",
+    "mass_spectrometry",
+    "quantitative_proteomics",
+    "protein_complexes"
+  ],
+  "allowed_entity_classes": [
+    "Protein",
+    "Interaction"
+  ],
+  "max_disclosure": "summary",
+  "allowed_protocols": [
+    "psi_ca",
+    "plaintext_dev"
+  ],
+  "normalization": "fkg-norm/1.0",
+  "min_eligible_set_size": 10,
+  "max_counterpart_set_size": 10000,
+  "pair_daily_limit": 10
+}

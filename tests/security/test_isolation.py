@@ -13,10 +13,27 @@ AGENTS = set(AGENT_SERVICES.values())
 
 # ---- static: compose topology -------------------------------------------------------------
 
-def test_registry_has_no_volumes_or_agent_secrets(compose_config):
+def _mounts(svc: dict) -> dict[str, dict]:
+    return {v.get("source", ""): v for v in svc.get("volumes", [])}
+
+
+def test_registry_mounts_only_its_key_and_public_keyring(compose_config):
     reg = compose_config["services"]["registry"]
-    assert not reg.get("volumes"), "registry must not mount anything"
+    mounts = _mounts(reg)
+    assert set(mounts) == {"keys_registry", "keys_public"}, "registry must not mount graphs or agent keys"
+    assert all(m.get("read_only") for m in mounts.values())
     assert not any(k.startswith("AGENT_ID") or k == "GRAPH_FIXTURE" for k in reg.get("environment", {}))
+
+
+def test_private_keys_are_never_shared(compose_config):
+    owners = {"keys_registry": "registry", **{f"keys_{p}": AGENT_SERVICES[p] for p in GRAPH_PERSONAS}}
+    for name, svc in compose_config["services"].items():
+        if name == "keygen":
+            assert svc.get("network_mode") == "none"  # provisioning container has no network at all
+            continue
+        for source in _mounts(svc):
+            if source in owners:
+                assert owners[source] == name, f"{name} mounts {source}"
 
 
 def test_registry_is_not_on_peer_network(compose_config):
