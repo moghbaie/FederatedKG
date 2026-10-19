@@ -1,0 +1,104 @@
+{
+  "normalization": "fkg-norm/1.0",
+  "researchers": [
+    {
+      "researcher_id": "persona_a",
+      "display_name": "Persona A",
+      "theme": "Mass spectrometry and proteomics",
+      "verified_researcher": true,
+      "published_topics": [
+        "proteomics",
+        "mass_spectrometry",
+        "quantitative_proteomics",
+        "protein_complexes"
+      ],
+      "topic_vocabulary": "fkg-topic/1.0",
+      "visibility": "research",
+      "is_simulated": true,
+      "public_scientific_inspiration": {
+        "name": "Matthias Mann",
+        "doi": "10.1038/nature01511",
+        "citation": "Aebersold R, Mann M. Mass spectrometry-based proteomics. Nature. 2003."
+      },
+      "disclaimer": "Simulated demonstration account. The cited scientist is a public research-theme inspiration only and is not a user, participant, or endorser."
+    },
+    {
+      "researcher_id": "persona_b",
+      "display_name": "Persona B",
+      "theme": "Protein identification and analytical proteomics",
+      "verified_researcher": true,
+      "published_topics": [
+        "proteomics",
+        "mass_spectrometry",
+        "peptide_identification",
+        "interactomics"
+      ],
+      "topic_vocabulary": "fkg-topic/1.0",
+      "visibility": "research",
+      "is_simulated": true,
+      "public_scientific_inspiration": {
+        "name": "John R. Yates III",
+        "doi": "10.1038/85686",
+        "citation": "Washburn MP, Wolters D, Yates JR 3rd. Large-scale analysis of the yeast proteome by multidimensional protein identification technology. Nat Biotechnol. 2001."
+      },
+      "disclaimer": "Simulated demonstration account. The cited scientist is a public research-theme inspiration only and is not a user, participant, or endorser."
+    },
+    {
+      "researcher_id": "persona_c",
+      "display_name": "Persona C",
+      "theme": "Protein interaction networks and affinity purification",
+      "verified_researcher": true,
+      "published_topics": [
+        "interactomics",
+        "protein_complexes",
+        "ap_ms",
+        "proximity_labeling",
+        "mass_spectrometry"
+      ],
+      "topic_vocabulary": "fkg-topic/1.0",
+      "visibility": "research",
+      "is_simulated": true,
+      "public_scientific_inspiration": {
+        "name": "Anne-Claude Gingras",
+        "doi": "10.1038/nmeth.1541",
+        "citation": "Choi H, et al. SAINT: probabilistic scoring of affinity purification-mass spectrometry data. Nat Methods. 2011."
+      },
+      "disclaimer": "Simulated demonstration account. The cited scientist is a public research-theme inspiration only and is not a user, participant, or endorser."
+    },
+    {
+      "researcher_id": "persona_d",
+      "display_name": "Persona D",
+      "theme": "Host-pathogen interactions and systems biology",
+      "verified_researcher": true,
+      "published_topics": [
+        "interactomics",
+        "host_pathogen",
+        "systems_biology",
+        "protein_complexes"
+      ],
+      "topic_vocabulary": "fkg-topic/1.0",
+      "visibility": "research",
+      "is_simulated": true,
+      "public_scientific_inspiration": {
+        "name": "Nevan Krogan",
+        "doi": "10.1038/s41586-020-2286-9",
+        "citation": "Gordon DE, et al. A SARS-CoV-2 protein interaction map reveals targets for drug repurposing. Nature. 2020."
+      },
+      "disclaimer": "Simulated demonstration account. The cited scientist is a public research-theme inspiration only and is not a user, participant, or endorser."
+    },
+    {
+      "researcher_id": "persona_e",
+      "display_name": "Persona E",
+      "theme": "Unverified visitor (authorization testing only)",
+      "verified_researcher": false,
+      "published_topics": [
+        "proteomics"
+      ],
+      "topic_vocabulary": "fkg-topic/1.0",
+      "visibility": "public",
+      "is_simulated": true,
+      "public_scientific_inspiration": null,
+      "disclaimer": "Simulated demonstration account. The cited scientist is a public research-theme inspiration only and is not a user, participant, or endorser."
+    }
+  ]
+}

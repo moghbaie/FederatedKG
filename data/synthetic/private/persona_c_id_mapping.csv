@@ -1,0 +1,29 @@
+source_label,entity_class,normalized_id,normalized_label,scheme
+PP2A-C,Protein,P67775,PPP2CA,UniProtKB
+YWHAZ,Protein,P63104,YWHAZ,UniProtKB
+YWHAE,Protein,P62258,YWHAE,UniProtKB
+HDAC1,Protein,Q13547,HDAC1,UniProtKB
+BRD4,Protein,O60885,BRD4,UniProtKB
+p300,Protein,Q09472,EP300,UniProtKB
+CTNNB1,Protein,P35222,CTNNB1,UniProtKB
+GRB2,Protein,P62993,GRB2,UniProtKB
+SRC,Protein,P12931,SRC,UniProtKB
+TP53,Protein,P04637,TP53,UniProtKB
+CDC5L,Protein,Q99459,CDC5L,UniProtKB
+PRMT5,Protein,O14744,PRMT5,UniProtKB
+UBC,Protein,P0CG48,UBC,UniProtKB
+VCP,Protein,P55072,VCP,UniProtKB
+CUL5,Protein,Q93034,CUL5,UniProtKB
+Elongin B,Protein,Q15370,ELOB,UniProtKB
+Elongin C,Protein,Q15369,ELOC,UniProtKB
+CBFB,Protein,Q13951,CBFB,UniProtKB
+CANARY-C-5c2c92ba4f8d,Protein,CANARY-C-5c2c92ba4f8d,synthetic construct,fkg-synthetic
+tandem affinity purification,Method,MI:0676,tandem affinity purification,PSI-MI
+proximity-dependent biotin identification,Method,MI:1314,proximity-dependent biotin identification,PSI-MI
+anti tag coimmunoprecipitation,Method,MI:0007,anti tag coimmunoprecipitation,PSI-MI
+Interactomics,Topic,interactomics,Interactomics,fkg-topic
+Protein complexes,Topic,protein_complexes,Protein complexes,fkg-topic
+Affinity purification mass spectrometry,Topic,ap_ms,Affinity purification mass spectrometry,fkg-topic
+Proximity labeling,Topic,proximity_labeling,Proximity labeling,fkg-topic
+Mass spectrometry,Topic,mass_spectrometry,Mass spectrometry,fkg-topic
+Chromatin regulation,Topic,chromatin_regulation,Chromatin regulation,fkg-topic

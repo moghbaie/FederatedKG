@@ -1,0 +1,10 @@
+# Private graphs and ground truth must never enter any image build context.
+data/synthetic/private
+data/synthetic/ground_truth.json
+**/node_modules
+**/__pycache__
+.git
+.venv
+tests
+frontend/dist
+.env

@@ -1,0 +1,27 @@
+source_label,entity_class,normalized_id,normalized_label,scheme
+ACTB,Protein,P60709,ACTB,UniProtKB
+GAPDH,Protein,P04406,GAPDH,UniProtKB
+HSP90,Protein,P07900,HSP90AA1,UniProtKB
+BiP,Protein,P11021,HSPA5,UniProtKB
+PCNA,Protein,P12004,PCNA,UniProtKB
+CDK2,Protein,P24941,CDK2,UniProtKB
+p97,Protein,P55072,VCP,UniProtKB
+PSMA1,Protein,P25786,PSMA1,UniProtKB
+CDC5L,Protein,Q99459,CDC5L,UniProtKB
+PRMT5,Protein,O14744,PRMT5,UniProtKB
+YWHAZ,Protein,P63104,YWHAZ,UniProtKB
+TP53,Protein,P04637,TP53,UniProtKB
+HDAC1,Protein,Q13547,HDAC1,UniProtKB
+UBC,Protein,P0CG48,UBC,UniProtKB
+BRD4,Protein,O60885,BRD4,UniProtKB
+EGFR,Protein,P00533,EGFR,UniProtKB
+PPP2CA,Protein,P67775,PPP2CA,UniProtKB
+YWHAE,Protein,P62258,YWHAE,UniProtKB
+CANARY-B-cc304102d64d,Protein,CANARY-B-cc304102d64d,synthetic construct,fkg-synthetic
+Identification by mass spectrometry,Method,MI:0427,Identification by mass spectrometry,PSI-MI
+coimmunoprecipitation,Method,MI:0019,coimmunoprecipitation,PSI-MI
+Proteomics,Topic,proteomics,Proteomics,fkg-topic
+Mass spectrometry,Topic,mass_spectrometry,Mass spectrometry,fkg-topic
+Peptide identification,Topic,peptide_identification,Peptide identification,fkg-topic
+Interactomics,Topic,interactomics,Interactomics,fkg-topic
+Protein turnover,Topic,protein_turnover,Protein turnover,fkg-topic

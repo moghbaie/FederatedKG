@@ -1,0 +1,242 @@
+{
+  "canaries": {
+    "persona_a": "CANARY-A-fd68ea0f8091",
+    "persona_b": "CANARY-B-cc304102d64d",
+    "persona_c": "CANARY-C-5c2c92ba4f8d",
+    "persona_d": "CANARY-D-3e1280f19fc3"
+  },
+  "graph_stats": {
+    "persona_a": {
+      "entities": 26,
+      "hypotheses": 3,
+      "observations": 8,
+      "relationships": 42
+    },
+    "persona_b": {
+      "entities": 26,
+      "hypotheses": 3,
+      "observations": 6,
+      "relationships": 40
+    },
+    "persona_c": {
+      "entities": 28,
+      "hypotheses": 3,
+      "observations": 6,
+      "relationships": 41
+    },
+    "persona_d": {
+      "entities": 29,
+      "hypotheses": 3,
+      "observations": 7,
+      "relationships": 44
+    }
+  },
+  "interaction_overlap": {
+    "persona_a|persona_b": {
+      "intersection": 6,
+      "jaccard": 0.214286,
+      "union": 28
+    },
+    "persona_a|persona_c": {
+      "intersection": 5,
+      "jaccard": 0.172414,
+      "union": 29
+    },
+    "persona_a|persona_d": {
+      "intersection": 0,
+      "jaccard": 0.0,
+      "union": 36
+    },
+    "persona_b|persona_c": {
+      "intersection": 6,
+      "jaccard": 0.230769,
+      "union": 26
+    },
+    "persona_b|persona_d": {
+      "intersection": 1,
+      "jaccard": 0.030303,
+      "union": 33
+    },
+    "persona_c|persona_d": {
+      "intersection": 4,
+      "jaccard": 0.133333,
+      "union": 30
+    }
+  },
+  "local_contradictions": {
+    "persona_a": {
+      "o1|o2": "contradictory_candidate",
+      "o3|o4": "supporting",
+      "o5|o6": "context_mismatch",
+      "o7|o8": "insufficient_information"
+    },
+    "persona_b": {
+      "o1|o2": "supporting",
+      "o3|o4": "contradictory_candidate",
+      "o5|o6": "context_mismatch"
+    },
+    "persona_c": {
+      "o1|o2": "supporting",
+      "o3|o4": "contradictory_candidate",
+      "o5|o6": "insufficient_information"
+    },
+    "persona_d": {
+      "o1|o2": "contradictory_candidate",
+      "o3|o4": "supporting",
+      "o5|o6": "context_mismatch"
+    }
+  },
+  "normalization": "fkg-norm/1.0",
+  "private_topics": {
+    "persona_a": [
+      "single_cell_proteomics"
+    ],
+    "persona_b": [
+      "protein_turnover"
+    ],
+    "persona_c": [
+      "chromatin_regulation"
+    ],
+    "persona_d": [
+      "antiviral_signaling"
+    ]
+  },
+  "protein_overlap": {
+    "persona_a|persona_b": {
+      "intersection": 12,
+      "jaccard": 0.461538,
+      "set_sizes": [
+        19,
+        19
+      ],
+      "union": 26
+    },
+    "persona_a|persona_c": {
+      "intersection": 9,
+      "jaccard": 0.310345,
+      "set_sizes": [
+        19,
+        19
+      ],
+      "union": 29
+    },
+    "persona_a|persona_d": {
+      "intersection": 1,
+      "jaccard": 0.025641,
+      "set_sizes": [
+        19,
+        21
+      ],
+      "union": 39
+    },
+    "persona_b|persona_c": {
+      "intersection": 10,
+      "jaccard": 0.357143,
+      "set_sizes": [
+        19,
+        19
+      ],
+      "union": 28
+    },
+    "persona_b|persona_d": {
+      "intersection": 4,
+      "jaccard": 0.111111,
+      "set_sizes": [
+        19,
+        21
+      ],
+      "union": 36
+    },
+    "persona_c|persona_d": {
+      "intersection": 8,
+      "jaccard": 0.25,
+      "set_sizes": [
+        19,
+        21
+      ],
+      "union": 32
+    }
+  },
+  "topic_similarity": {
+    "persona_a|persona_b": {
+      "intersection": 2,
+      "jaccard": 0.333333,
+      "matched_topics": [
+        "mass_spectrometry",
+        "proteomics"
+      ],
+      "union": 6
+    },
+    "persona_a|persona_c": {
+      "intersection": 2,
+      "jaccard": 0.285714,
+      "matched_topics": [
+        "mass_spectrometry",
+        "protein_complexes"
+      ],
+      "union": 7
+    },
+    "persona_a|persona_d": {
+      "intersection": 1,
+      "jaccard": 0.142857,
+      "matched_topics": [
+        "protein_complexes"
+      ],
+      "union": 7
+    },
+    "persona_a|persona_e": {
+      "intersection": 1,
+      "jaccard": 0.25,
+      "matched_topics": [
+        "proteomics"
+      ],
+      "union": 4
+    },
+    "persona_b|persona_c": {
+      "intersection": 2,
+      "jaccard": 0.285714,
+      "matched_topics": [
+        "interactomics",
+        "mass_spectrometry"
+      ],
+      "union": 7
+    },
+    "persona_b|persona_d": {
+      "intersection": 1,
+      "jaccard": 0.142857,
+      "matched_topics": [
+        "interactomics"
+      ],
+      "union": 7
+    },
+    "persona_b|persona_e": {
+      "intersection": 1,
+      "jaccard": 0.25,
+      "matched_topics": [
+        "proteomics"
+      ],
+      "union": 4
+    },
+    "persona_c|persona_d": {
+      "intersection": 2,
+      "jaccard": 0.285714,
+      "matched_topics": [
+        "interactomics",
+        "protein_complexes"
+      ],
+      "union": 7
+    },
+    "persona_c|persona_e": {
+      "intersection": 0,
+      "jaccard": 0.0,
+      "matched_topics": [],
+      "union": 6
+    },
+    "persona_d|persona_e": {
+      "intersection": 0,
+      "jaccard": 0.0,
+      "matched_topics": [],
+      "union": 5
+    }
+  }
+}

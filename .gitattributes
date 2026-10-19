@@ -1,0 +1,2 @@
+# LF everywhere: fixtures are checked byte-for-byte and scripts run in Linux containers.
+* text=auto eol=lf

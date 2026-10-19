@@ -1,0 +1,115 @@
+# FederatedKG local MVP. Docker isolation is a functional simulation of institutional
+# boundaries, not a substitute for them.
+#
+# Networks:
+#   edge   frontend <-> registry (only network with a host port, via frontend)
+#   data   registry <-> postgres (internal)
+#   agents registry <-> agents   (internal; registry reaches agent endpoints only)
+#   peer   agent <-> agent       (internal; registry is NOT attached)
+
+# One shared image. Only agent_a builds it (parallel builds of one tag race in BuildKit);
+# the other agents reuse the local tag.
+x-agent: &agent
+  image: federatedkg-agent:dev
+  pull_policy: never
+  networks: [agents, peer]
+  healthcheck:
+    test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/internal/health')"]
+    interval: 5s
+    timeout: 3s
+    retries: 20
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: fkg_registry
+      POSTGRES_USER: fkg_registry
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fkg_dev_only}
+    volumes:
+      - registry_db:/var/lib/postgresql/data
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fkg_registry -d fkg_registry"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  registry:
+    build:
+      context: .
+      dockerfile: registry/Dockerfile
+    image: federatedkg-registry:dev
+    # No volumes: the registry must not be able to read any private graph.
+    environment:
+      DATABASE_URL: postgresql+psycopg://fkg_registry:${POSTGRES_PASSWORD:-fkg_dev_only}@postgres:5432/fkg_registry
+      AGENT_HEALTH_URLS: >-
+        persona_a=http://agent_a:8000/internal/health,persona_b=http://agent_b:8000/internal/health,persona_c=http://agent_c:8000/internal/health,persona_d=http://agent_d:8000/internal/health
+    networks: [edge, data, agents]
+    depends_on:
+      postgres: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  agent_a:
+    <<: *agent
+    build:
+      context: .
+      dockerfile: agents/common/Dockerfile
+    pull_policy: build
+    env_file: agents/persona_a/agent.env
+    volumes:
+      - ./data/synthetic/private/persona_a.ttl:/fixtures/graph.ttl:ro
+      - kg_persona_a:/var/lib/fkg
+
+  agent_b:
+    <<: *agent
+    env_file: agents/persona_b/agent.env
+    volumes:
+      - ./data/synthetic/private/persona_b.ttl:/fixtures/graph.ttl:ro
+      - kg_persona_b:/var/lib/fkg
+
+  agent_c:
+    <<: *agent
+    env_file: agents/persona_c/agent.env
+    volumes:
+      - ./data/synthetic/private/persona_c.ttl:/fixtures/graph.ttl:ro
+      - kg_persona_c:/var/lib/fkg
+
+  agent_d:
+    <<: *agent
+    env_file: agents/persona_d/agent.env
+    volumes:
+      - ./data/synthetic/private/persona_d.ttl:/fixtures/graph.ttl:ro
+      - kg_persona_d:/var/lib/fkg
+
+  frontend:
+    build:
+      context: frontend
+    image: federatedkg-frontend:dev
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    networks: [edge]
+    depends_on:
+      registry: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+networks:
+  edge: {}
+  data: { internal: true }
+  agents: { internal: true }
+  peer: { internal: true }
+
+volumes:
+  registry_db: {}
+  kg_persona_a: {}
+  kg_persona_b: {}
+  kg_persona_c: {}
+  kg_persona_d: {}

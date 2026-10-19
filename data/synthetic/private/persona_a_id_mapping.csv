@@ -1,0 +1,27 @@
+source_label,entity_class,normalized_id,normalized_label,scheme
+ErbB1,Protein,P00533,EGFR,UniProtKB
+GRB2,Protein,P62993,GRB2,UniProtKB
+SRC,Protein,P12931,SRC,UniProtKB
+AKT1,Protein,P31749,AKT1,UniProtKB
+MTOR,Protein,P42345,MTOR,UniProtKB
+HSP90-alpha,Protein,P07900,HSP90AA1,UniProtKB
+ACTB,Protein,P60709,ACTB,UniProtKB
+GAPDH,Protein,P04406,GAPDH,UniProtKB
+14-3-3 zeta,Protein,P63104,YWHAZ,UniProtKB
+YWHAE,Protein,P62258,YWHAE,UniProtKB
+PCNA,Protein,P12004,PCNA,UniProtKB
+CDK2,Protein,P24941,CDK2,UniProtKB
+TP53,Protein,P04637,TP53,UniProtKB
+HDAC1,Protein,Q13547,HDAC1,UniProtKB
+CTNNB1,Protein,P35222,CTNNB1,UniProtKB
+HSPA5,Protein,P11021,HSPA5,UniProtKB
+PPP2CA,Protein,P67775,PPP2CA,UniProtKB
+EP300,Protein,Q09472,EP300,UniProtKB
+CANARY-A-fd68ea0f8091,Protein,CANARY-A-fd68ea0f8091,synthetic construct,fkg-synthetic
+Identification by mass spectrometry,Method,MI:0427,Identification by mass spectrometry,PSI-MI
+affinity chromatography technology,Method,MI:0004,affinity chromatography technology,PSI-MI
+Proteomics,Topic,proteomics,Proteomics,fkg-topic
+Mass spectrometry,Topic,mass_spectrometry,Mass spectrometry,fkg-topic
+Quantitative proteomics,Topic,quantitative_proteomics,Quantitative proteomics,fkg-topic
+Protein complexes,Topic,protein_complexes,Protein complexes,fkg-topic
+Single-cell proteomics,Topic,single_cell_proteomics,Single-cell proteomics,fkg-topic

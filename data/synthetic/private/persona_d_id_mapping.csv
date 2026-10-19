@@ -1,0 +1,30 @@
+source_label,entity_class,normalized_id,normalized_label,scheme
+CUL5,Protein,Q93034,CUL5,UniProtKB
+ELOB,Protein,Q15370,ELOB,UniProtKB
+ELOC,Protein,Q15369,ELOC,UniProtKB
+CBFB,Protein,Q13951,CBFB,UniProtKB
+APOBEC3G,Protein,Q9HC16,APOBEC3G,UniProtKB
+UBC,Protein,P0CG48,UBC,UniProtKB
+BRD4,Protein,O60885,BRD4,UniProtKB
+PRMT5,Protein,O14744,PRMT5,UniProtKB
+TBK1,Protein,Q9UHD2,TBK1,UniProtKB
+IRF3,Protein,Q14653,IRF3,UniProtKB
+MAVS,Protein,Q7Z434,MAVS,UniProtKB
+DDX58,Protein,O95786,RIGI,UniProtKB
+STAT1,Protein,P42224,STAT1,UniProtKB
+HDAC1,Protein,Q13547,HDAC1,UniProtKB
+Spike,Protein,P0DTC2,S,UniProtKB
+Nucleocapsid,Protein,P0DTC9,N,UniProtKB
+Membrane protein,Protein,P0DTC5,M,UniProtKB
+ORF3a,Protein,P0DTC3,ORF3a,UniProtKB
+ORF6,Protein,P0DTC6,ORF6,UniProtKB
+ORF8,Protein,P0DTC8,ORF8,UniProtKB
+CANARY-D-3e1280f19fc3,Protein,CANARY-D-3e1280f19fc3,synthetic construct,fkg-synthetic
+anti tag coimmunoprecipitation,Method,MI:0007,anti tag coimmunoprecipitation,PSI-MI
+affinity chromatography technology,Method,MI:0004,affinity chromatography technology,PSI-MI
+two hybrid,Method,MI:0018,two hybrid,PSI-MI
+Interactomics,Topic,interactomics,Interactomics,fkg-topic
+Host-pathogen interactions,Topic,host_pathogen,Host-pathogen interactions,fkg-topic
+Systems biology,Topic,systems_biology,Systems biology,fkg-topic
+Protein complexes,Topic,protein_complexes,Protein complexes,fkg-topic
+Antiviral signaling,Topic,antiviral_signaling,Antiviral signaling,fkg-topic

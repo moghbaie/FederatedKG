@@ -1,0 +1,8 @@
+kind,subject,identifier,url,retrieved,verified_via,access_terms
+citation,persona_a,doi:10.1038/nature01511,https://doi.org/10.1038/nature01511,2026-10-19,Crossref REST API,bibliographic metadata only
+citation,persona_b,doi:10.1038/85686,https://doi.org/10.1038/85686,2026-10-19,Crossref REST API,bibliographic metadata only
+citation,persona_c,doi:10.1038/nmeth.1541,https://doi.org/10.1038/nmeth.1541,2026-10-19,Crossref REST API,bibliographic metadata only
+citation,persona_d,doi:10.1038/s41586-020-2286-9,https://doi.org/10.1038/s41586-020-2286-9,2026-10-19,Crossref REST API,bibliographic metadata only
+vocabulary,proteins,UniProtKB accessions,https://rest.uniprot.org/,2026-10-19,UniProt REST API (all reviewed entries),UniProt: CC BY 4.0
+vocabulary,methods,PSI-MI terms,https://www.ebi.ac.uk/ols4/ontologies/mi,2026-10-19,EBI OLS4 API,see PSI-MI license on OBO Foundry
+vocabulary,topics,urn:fkg:topic:*,,2026-10-19,local,project-defined
