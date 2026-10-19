@@ -9,6 +9,11 @@ dependencies = [
     "rdflib==7.1.1",
     "httpx==0.28.1",
     "pyyaml==6.0.2",
+    # registry, for in-process API tests
+    "fastapi==0.115.6",
+    "sqlalchemy==2.0.36",
+    "pyjwt==2.10.1",
+    "alembic==1.14.0",
 ]
 
 [tool.uv]

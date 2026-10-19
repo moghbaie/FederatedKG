@@ -42,6 +42,9 @@ services:
     image: federatedkg-registry:dev
     # No volumes: the registry must not be able to read any private graph.
     environment:
+      # Test mode enables the adjustable clock and /v1/test/reset. Local demo only; set 0 otherwise.
+      FKG_TEST_MODE: ${FKG_TEST_MODE:-1}
+      REGISTRY_TOKEN_SECRET: ${REGISTRY_TOKEN_SECRET:-}
       DATABASE_URL: postgresql+psycopg://fkg_registry:${POSTGRES_PASSWORD:-fkg_dev_only}@postgres:5432/fkg_registry
       AGENT_HEALTH_URLS: >-
         persona_a=http://agent_a:8000/internal/health,persona_b=http://agent_b:8000/internal/health,persona_c=http://agent_c:8000/internal/health,persona_d=http://agent_d:8000/internal/health
