@@ -1,0 +1,20 @@
+FederatedKG
+Copyright 2026 Mehrnoosh Oghbaie
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+All researcher accounts, knowledge graphs, hypotheses and observations in this
+repository are simulated or synthetic. Scientists cited in data/synthetic/public
+are public research-theme inspirations only and are not users, participants or
+endorsers of this software.
+
+Third-party data:
+- Protein identifiers from UniProtKB (https://www.uniprot.org), licensed under
+  Creative Commons Attribution 4.0 International (CC BY 4.0).
+- Interaction detection method terms from the PSI-MI controlled vocabulary
+  (https://www.ebi.ac.uk/ols4/ontologies/mi), used under its published terms.
+- Publication metadata retrieved via Crossref (https://www.crossref.org).
+
+Third-party software is used as dependencies under their own licenses,
+including OpenMined PSI (Apache-2.0), RDFLib (BSD-3-Clause), FastAPI (MIT),
+SQLAlchemy (MIT), psycopg (LGPL-3.0), React (MIT) and Vite (MIT).

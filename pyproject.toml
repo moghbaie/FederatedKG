@@ -3,6 +3,7 @@ name = "federatedkg-dev"
 version = "0.1.0"
 description = "Host-side test and tooling environment for the FederatedKG MVP"
 requires-python = ">=3.12"
+license = "Apache-2.0"
 dependencies = [
     "pytest==8.3.4",
     "rdflib==7.1.1",

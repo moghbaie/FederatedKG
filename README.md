@@ -74,3 +74,7 @@ Docker isolation simulates institutional boundaries and does not replace them. D
 - PSI-CA is integrated only as a library smoke test. Agent-to-agent PSI-CA, tickets and service tokens come in Phase 4.
 - PSI-CA reveals the exact intersection size to the output party and each set's size to the other party. Coarse bands will be a display policy, not a cryptographic guarantee. The integration is semi-honest and has not been reviewed.
 - The Postgres password in `.env.example` and the defaults are for development only.
+
+## License
+
+Apache License 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE), which also covers third-party data attribution.
