@@ -347,6 +347,20 @@ def set_clock(body: ClockBody, auth: dict = Depends(authenticated(("registry",),
     return {"offset_seconds": rt.clock_offset}
 
 
+@app.post("/internal/test/reset")
+def reset_state(auth: dict = Depends(authenticated(("registry",), use_wall_clock=True))) -> dict:
+    """Demo reset: forget used tickets, per-counterpart counts, exact-count log and PSI sessions."""
+    if not settings.test_mode:
+        raise fail(404, "not_found")
+    for name in ("agent_state.json", "comparisons.jsonl"):
+        (settings.store_dir / name).unlink(missing_ok=True)
+    rt.state = AgentState(settings.store_dir / "agent_state.json")
+    with rt.lock:
+        rt.sessions.clear()
+    rt.clock_offset = 0.0
+    return {"reset": True}
+
+
 # ---- owner-only view ("My KG") -----------------------------------------------------------------------
 
 @app.get("/owner/graph")

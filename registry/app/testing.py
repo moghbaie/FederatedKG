@@ -10,7 +10,7 @@ from .clock import Clock
 from .config import Settings
 from .deps import get_clock, get_db, get_settings
 from .identity import seed_researchers
-from .execution import sync_agent_clocks
+from .execution import reset_agents, sync_agent_clocks
 from .models import (AuditEvent, Channel, ChannelPolicyVersion, ComparisonRequest, ComparisonResult,
                      Notification, Ticket)
 
@@ -56,4 +56,4 @@ def reset_demo(request: Request, db: Session = Depends(get_db), clock: Clock = D
     seed_researchers(db, settings)
     clock.reset()
     request.app.state.test_agent_delay = 0.0
-    return {"reset": True, "agents_synced": sync_agent_clocks(request.app)}
+    return {"reset": True, "agents_reset": reset_agents(request.app)}

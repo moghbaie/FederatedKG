@@ -5,6 +5,14 @@ import { api, describe } from "../api";
 import { Countdown, Empty, ErrorBox, label, PageHeader, Pill, TopicChips, useToast } from "../components";
 import type { ComparisonRequest } from "../types";
 
+/** Stable attributes for locating a specific request card (tests and assistive tooling). */
+const cardAttrs = (r: ComparisonRequest) => ({
+  "data-request-id": r.id,
+  "data-topics": [...r.requested_scope.topics].sort().join(","),
+  "data-classes": [...r.requested_scope.entity_classes].sort().join(","),
+  "data-status": r.status,
+});
+
 function ScopeSummary({ r }: { r: ComparisonRequest }) {
   const s = r.requested_scope;
   return (
@@ -37,7 +45,7 @@ function useAction(onDone?: () => void) {
 function InboxItem({ r }: { r: ComparisonRequest }) {
   const act = useAction();
   return (
-    <li className="card" data-testid={`inbox-${r.requester.researcher_id}`}>
+    <li className="card" data-testid={`inbox-${r.requester.researcher_id}`} {...cardAttrs(r)}>
       <div className="row between wrap">
         <div className="row wrap">
           <strong>{r.requester.display_name}</strong>
@@ -66,7 +74,7 @@ function OutboxItem({ r }: { r: ComparisonRequest }) {
   const act = useAction();
   const blocked = r.status === "APPROVED" && r.execution_check && !r.execution_check.ok;
   return (
-    <li className="card" data-testid={`outbox-${r.recipient.researcher_id}`}>
+    <li className="card" data-testid={`outbox-${r.recipient.researcher_id}`} {...cardAttrs(r)}>
       <div className="row between wrap">
         <div className="row wrap">
           <strong>{r.recipient.display_name}</strong>
@@ -87,7 +95,7 @@ function OutboxItem({ r }: { r: ComparisonRequest }) {
         </div>
       </div>
       <ScopeSummary r={r} />
-      {blocked && <p className="hint">Cannot run now: {label(r.execution_check!.reason ?? "")}.</p>}
+      {blocked && <p className="hint" data-testid="blocked-reason">Cannot run now: {label(r.execution_check!.reason ?? "")}.</p>}
     </li>
   );
 }

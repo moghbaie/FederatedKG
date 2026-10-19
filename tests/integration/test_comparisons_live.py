@@ -194,6 +194,18 @@ def test_expired_channel_cancels_comparison(api):
     assert r.status_code == 409 and r.json()["detail"]["code"] == "request_expired"
 
 
+def test_demo_reset_clears_agent_local_state(api):
+    rid, final = run_targeted(api, "persona_c", "persona_d", ["interactomics"])
+    assert final["status"] == "COMPLETED" and agent_log("persona_c")
+    r = api.post("/v1/test/reset").json()
+    assert r["agents_reset"] == {p: 200 for p in GRAPH_PERSONAS}
+    for p in GRAPH_PERSONAS:
+        assert agent_log(p) == []
+        state = compose("exec", "-T", AGENT_SERVICES[p], "sh", "-c",
+                        "cat /var/lib/fkg/agent_state.json 2>/dev/null || echo none").stdout.strip()
+        assert state == "none", p
+
+
 # ---- service authentication on the real network -----------------------------------------------------
 
 _PROBE = r"""

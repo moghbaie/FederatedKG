@@ -1,4 +1,4 @@
-# FederatedKG (MVP, Phase 5)
+# FederatedKG (MVP, Phase 6)
 
 > **Simulated researchers and synthetic knowledge graphs. No real researcher participation.**
 > Personas A–D cite published work by real scientists *only* as public research-theme inspiration.
@@ -17,7 +17,8 @@ cardinality) without exchanging plaintext entity lists. See [plan.md](plan.md) f
 | 3 | Comparison requests, manual approvals, versioned policy enforcement, quotas, audit | done |
 | 4 | Signed tickets, service authentication, agent-to-agent PSI-CA, guarded release, leak scan | done |
 | 5 | Web UI: eight screens, owner-only My KG, local contradiction check | done |
-| 6 | Automated four-researcher browser scenario (pause, tightening, 24 h expiry) | next |
+| 6 | Automated four-researcher browser scenario (pause, tightening, 24 h expiry, no leakage) | done |
+| 7 | Documentation, threat model, demo script, test report | next |
 
 ## Registry API
 
@@ -96,6 +97,9 @@ four researchers side by side. A banner on every page says the researchers and d
 
 The **demo clock** buttons (+1 h, +24 h, test mode only) advance the registry and agent clocks together, so you can
 watch expiry happen.
+- The tab that advanced the clock is signed in again automatically.
+- Sessions in other tabs last 30 minutes on the same clock, so they expire and those tabs must sign in again.
+- **Reset demo** also clears each agent's local state: its single-use ticket record, its per-counterpart limits and its exact-count log.
 
 Only the owner's own session can open My KG: the agent requires a registry-signed (Ed25519) user token whose subject
 is its persona. Other sessions get 403, and the proxy exposes no other agent path.
@@ -141,6 +145,7 @@ uv run pytest                            # unit and static security tests (no st
 uv run pytest -m live                    # live API, isolation, PSI-CA and leak-scan tests
 cd frontend && npx playwright install chromium && npx playwright test   # browser end-to-end tests
 FKG_SCREENSHOTS=1 npx playwright test    # optional: capture screenshots of every screen
+npx playwright test four_researchers --repeat-each=2   # Phase 6 scenario, twice, to check repeatability
 docker compose down -v                   # stop and wipe volumes
 ```
 

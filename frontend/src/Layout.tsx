@@ -57,12 +57,16 @@ function Notifications() {
 export function DemoControls() {
   const qc = useQueryClient();
   const toast = useToast();
+  const { me, login } = useAuth();
   const { data: health } = useQuery({ queryKey: ["health"], queryFn: () => api<{ test_mode: boolean }>("/v1/health") });
   const advance = useMutation({
     mutationFn: (seconds: number) => api("/v1/test/clock/advance", { method: "POST", body: { seconds } }),
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Sessions expire on the registry clock; re-issue this tab's demo session at the new time.
+      // Other tabs' sessions expire as they would in reality.
+      if (me) await login(me.researcher_id);
       qc.invalidateQueries();
-      toast("Demo clock advanced (registry and agents).");
+      toast("Demo clock advanced (registry and agents). Other open sessions may need to sign in again.");
     },
     onError: (e) => toast(describe(e), "bad"),
   });

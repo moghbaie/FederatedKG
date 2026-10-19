@@ -277,6 +277,19 @@ def ticket_status(ticket_id: str, request: Request, db: Session = Depends(get_db
 
 # ---- test mode: keep agent clocks aligned with the registry test clock -----------------------------
 
+def reset_agents(app: FastAPI) -> dict:
+    """Test-mode demo reset of each agent's local state (signed with wall time, like clock sync)."""
+    if not app.state.identity.available:
+        return {}
+    out = {}
+    for persona in app.state.settings.agent_urls:
+        try:
+            out[persona] = call_agent(app, persona, "POST", "/internal/test/reset", {}, wall_now()).status_code
+        except httpx.HTTPError:
+            out[persona] = "unreachable"
+    return out
+
+
 def sync_agent_clocks(app: FastAPI) -> dict:
     """Push the registry clock offset to agents. Signed with wall time so it verifies before syncing."""
     if not app.state.identity.available:
